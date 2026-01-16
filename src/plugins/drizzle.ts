@@ -37,7 +37,9 @@ const drizzlePlugin: FastifyPluginAsync = async (fastify) => {
     }
 
     // Build connection string from individual components
-    connectionString = `postgresql://${user.trim()}:${encodeURIComponent(password.trim())}@${host.trim()}:${port.trim()}/${database.trim()}`;
+    connectionString = `postgresql://${user.trim()}:${encodeURIComponent(
+      password.trim()
+    )}@${host.trim()}:${port.trim()}/${database.trim()}`;
   }
 
   // Create PostgreSQL connection pool
