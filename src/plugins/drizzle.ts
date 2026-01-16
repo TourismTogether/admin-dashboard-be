@@ -11,45 +11,33 @@ declare module "fastify" {
 }
 
 const drizzlePlugin: FastifyPluginAsync = async (fastify) => {
-  // Get Supabase connection string
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabasePassword = process.env.SUPABASE_DB_PASSWORD;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const directDbUrl = process.env.SUPABASE_DB_URL;
-
-  if (!supabaseUrl && !directDbUrl) {
-    fastify.log.warn(
-      "Supabase URL not configured. Drizzle will not be available."
-    );
-    return;
-  }
-
+  // Priority 1: Use DATABASE_URL if provided (connection string from Supabase Dashboard)
+  const databaseUrl = process.env.DATABASE_URL;
   let connectionString: string;
 
-  if (directDbUrl) {
-    // Use direct database URL if provided
-    connectionString = directDbUrl;
+  if (databaseUrl) {
+    connectionString = databaseUrl.trim();
+    fastify.log.info("Using DATABASE_URL from .env file");
   } else {
-    // Parse Supabase URL to get database connection string
-    const urlMatch = supabaseUrl!.match(/https?:\/\/([^.]+)\.supabase\.co/);
-    if (!urlMatch) {
-      fastify.log.error(
-        "Invalid SUPABASE_URL format. Expected format: https://project-ref.supabase.co"
+    // Priority 2: Use individual DATABASE_* variables
+    const host = process.env.DATABASE_HOST;
+    const port = process.env.DATABASE_PORT;
+    const user = process.env.DATABASE_USER;
+    const password = process.env.DATABASE_PASSWORD;
+    const database = process.env.DATABASE_NAME;
+
+    if (!host || !port || !user || !password || !database) {
+      fastify.log.warn(
+        "Database configuration is incomplete. Drizzle will not be available."
+      );
+      fastify.log.warn(
+        "Please set DATABASE_URL or individual DATABASE_* variables in your .env file"
       );
       return;
     }
 
-    const projectRef = urlMatch[1];
-    const password = supabasePassword || supabaseServiceKey || "";
-
-    if (!password) {
-      fastify.log.error(
-        "Either SUPABASE_DB_PASSWORD or SUPABASE_SERVICE_ROLE_KEY must be set"
-      );
-      return;
-    }
-
-    connectionString = `postgresql://postgres:${password}@db.${projectRef}.supabase.co:5432/postgres`;
+    // Build connection string from individual components
+    connectionString = `postgresql://${user.trim()}:${encodeURIComponent(password.trim())}@${host.trim()}:${port.trim()}/${database.trim()}`;
   }
 
   // Create PostgreSQL connection pool

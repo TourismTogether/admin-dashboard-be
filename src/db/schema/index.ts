@@ -1,4 +1,11 @@
 // Export all schemas from this file
 // Import and export your table schemas here
 
-export * from "./example";
+export * from "./users";
+export * from "./groups";
+export * from "./memberships";
+export * from "./groupTasks";
+export * from "./userGroupTasks";
+export * from "./tableWeeks";
+export * from "./tableSwimlanes";
+export * from "./personalTasks";

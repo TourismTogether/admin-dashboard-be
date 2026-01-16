@@ -4,7 +4,7 @@ import fp from "fastify-plugin";
 
 declare module "fastify" {
   interface FastifyInstance {
-    supabase: SupabaseClient;
+    supabase?: SupabaseClient;
   }
 }
 
@@ -19,8 +19,8 @@ const supabasePlugin: FastifyPluginAsync = async (fastify) => {
     fastify.log.warn(
       "Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_ANON_KEY) in your .env file"
     );
-    // Create a dummy client to prevent crashes, but it won't work
-    fastify.decorate("supabase", createClient("", ""));
+    // Don't create a dummy client - just skip initialization
+    // Routes that need Supabase should check if it's available
     return;
   }
 

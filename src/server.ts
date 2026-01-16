@@ -11,12 +11,15 @@ server.register(app);
 // Start the server
 const start = async () => {
   try {
+    const port = process.env.PORT ? parseInt(process.env.PORT.trim()) : 3000;
+    const host = process.env.HOST ? process.env.HOST.trim() : "0.0.0.0";
+    
     await server.listen({
-      port: process.env.PORT ? parseInt(process.env.PORT) : 3000,
-      host: process.env.HOST ? process.env.HOST : "0.0.0.0",
+      port,
+      host,
     });
     server.log.info(
-      `Server listening on ${server.server.address()?.toString()}`
+      `Server listening on ${host}:${port}`
     );
   } catch (err) {
     server.log.error(err);
