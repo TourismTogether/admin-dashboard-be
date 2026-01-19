@@ -237,8 +237,8 @@ export const createSwimlaneRouteSchema: FastifySchema = {
     properties: {
       tableId: { type: "string" },
       content: { type: "string" },
-      startTime: { type: "string" },
-      duration: { type: "number" },
+      startTime: { type: "string", nullable: true },
+      duration: { type: "number", nullable: true },
     },
   },
   response: {
@@ -278,8 +278,8 @@ export const updateSwimlaneRouteSchema: FastifySchema = {
     type: "object",
     properties: {
       content: { type: "string" },
-      startTime: { type: "string" },
-      duration: { type: "number" },
+      startTime: { type: "string", nullable: true },
+      duration: { type: "number", nullable: true },
     },
   },
   response: {
