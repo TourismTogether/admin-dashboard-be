@@ -36,6 +36,8 @@ const options: AppOptions = {
   trustProxy: true,
   // Increase plugin timeout to handle slow connections during startup
   pluginTimeout: 60000, // 60 seconds
+  // Allow empty body for DELETE requests
+  bodyLimit: 1048576, // 1MB
 };
 
 const app: FastifyPluginAsync<AppOptions> = async (
@@ -148,6 +150,14 @@ const app: FastifyPluginAsync<AppOptions> = async (
     }
   });
 
+  // Allow DELETE requests without body even if Content-Type is set
+  fastify.addHook("onRequest", async (request, reply) => {
+    if (request.method === "DELETE" && request.headers["content-type"]?.includes("application/json")) {
+      // Remove content-type header for DELETE requests to avoid body validation
+      delete request.headers["content-type"];
+    }
+  });
+
   fastify.addHook("onClose", async () => {
     console.log("Server is closing");
   });
@@ -166,6 +176,16 @@ const app: FastifyPluginAsync<AppOptions> = async (
     dir: join(__dirname, "routes"),
     options: opts,
   });
+  
+  // Manually register routes from subdirectories
+  // Autoload should handle this, but we register explicitly as fallback
+  const authRoutes = await import("./routes/auth/index");
+  const personalTasksRoutes = await import("./routes/personal-tasks/index");
+  const groupTasksRoutes = await import("./routes/group-tasks/index");
+  
+  await fastify.register(authRoutes.default);
+  await fastify.register(personalTasksRoutes.default);
+  await fastify.register(groupTasksRoutes.default);
 };
 
 export default app;
