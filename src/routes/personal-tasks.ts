@@ -4,22 +4,25 @@ import {
   tableWeeks,
   tableSwimlanes,
   personalTasks,
-  users,
 } from "../db/schema";
+import { verifyAccessToken, AuthenticatedRequest } from "./auth/auth";
 
 const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
   // Get all tables for a user
-  fastify.get("/api/personal-tasks/tables", async (request, reply) => {
-    try {
-      if (!fastify.drizzle) {
-        return reply.status(500).send({ error: "Database not available" });
-      }
+  fastify.get(
+    "/api/personal-tasks/tables",
+    { preHandler: [verifyAccessToken] },
+    async (request, reply) => {
+      try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
 
-      // Get or create default user
-      const userId = await getOrCreateDefaultUser();
-      if (!userId) {
-        return reply.status(500).send({ error: "Failed to get user" });
-      }
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) {
+          return reply.status(401).send({ error: "Unauthorized" });
+        }
+        const userId = authRequest.user.userId;
 
       const tables = await fastify.drizzle
         .select()
@@ -35,19 +38,33 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // Get a single table with swimlanes and tasks
-  fastify.get("/api/personal-tasks/tables/:tableId", async (request, reply) => {
+  fastify.get(
+    "/api/personal-tasks/tables/:tableId",
+    { preHandler: [verifyAccessToken] },
+    async (request, reply) => {
     try {
       if (!fastify.drizzle) {
         return reply.status(500).send({ error: "Database not available" });
       }
 
+      const authRequest = request as AuthenticatedRequest;
+      if (!authRequest.user) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const userId = authRequest.user.userId;
+
       const { tableId } = request.params as { tableId: string };
 
-      // Get table
+      // Get table and verify ownership
       const [table] = await fastify.drizzle
         .select()
         .from(tableWeeks)
-        .where(eq(tableWeeks.tableId, tableId))
+        .where(
+          and(
+            eq(tableWeeks.tableId, tableId),
+            eq(tableWeeks.userId, userId)
+          )
+        )
         .limit(1);
 
       if (!table) {
@@ -87,37 +104,11 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  // Helper function to get or create default user
-  const getOrCreateDefaultUser = async () => {
-    if (!fastify.drizzle) return null;
-
-    // Try to get existing default user
-    const [existingUser] = await fastify.drizzle
-      .select()
-      .from(users)
-      .where(eq(users.account, "default"))
-      .limit(1);
-
-    if (existingUser) {
-      return existingUser.userId;
-    }
-
-    // Create default user if not exists
-    const [newUser] = await fastify.drizzle
-      .insert(users)
-      .values({
-        account: "default",
-        password: "default", // In production, this should be hashed
-        email: "default@example.com",
-        nickname: "Default User",
-      })
-      .returning();
-
-    return newUser.userId;
-  };
-
   // Create a new table
-  fastify.post("/api/personal-tasks/tables", async (request, reply) => {
+  fastify.post(
+    "/api/personal-tasks/tables",
+    { preHandler: [verifyAccessToken] },
+    async (request, reply) => {
     try {
       if (!fastify.drizzle) {
         return reply.status(500).send({ error: "Database not available" });
@@ -129,11 +120,11 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
         description?: string;
       };
 
-      // Get or create default user
-      const userId = await getOrCreateDefaultUser();
-      if (!userId) {
-        return reply.status(500).send({ error: "Failed to get user" });
+      const authRequest = request as AuthenticatedRequest;
+      if (!authRequest.user) {
+        return reply.status(401).send({ error: "Unauthorized" });
       }
+      const userId = authRequest.user.userId;
 
       // Create table and default swimlanes in a transaction
       const result = await fastify.drizzle.transaction(async (tx) => {
@@ -180,11 +171,20 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // Update a table
-  fastify.put("/api/personal-tasks/tables/:tableId", async (request, reply) => {
+  fastify.put(
+    "/api/personal-tasks/tables/:tableId",
+    { preHandler: [verifyAccessToken] },
+    async (request, reply) => {
     try {
       if (!fastify.drizzle) {
         return reply.status(500).send({ error: "Database not available" });
       }
+
+      const authRequest = request as AuthenticatedRequest;
+      if (!authRequest.user) {
+        return reply.status(401).send({ error: "Unauthorized" });
+      }
+      const userId = authRequest.user.userId;
 
       const { tableId } = request.params as { tableId: string };
       const body = request.body as {
@@ -192,6 +192,22 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
         week?: number;
         description?: string;
       };
+
+      // Verify ownership before updating
+      const [existingTable] = await fastify.drizzle
+        .select()
+        .from(tableWeeks)
+        .where(
+          and(
+            eq(tableWeeks.tableId, tableId),
+            eq(tableWeeks.userId, userId)
+          )
+        )
+        .limit(1);
+
+      if (!existingTable) {
+        return reply.status(404).send({ error: "Table not found" });
+      }
 
       const [updatedTable] = await fastify.drizzle
         .update(tableWeeks)
@@ -201,10 +217,6 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
         })
         .where(eq(tableWeeks.tableId, tableId))
         .returning();
-
-      if (!updatedTable) {
-        return reply.status(404).send({ error: "Table not found" });
-      }
 
       return { data: updatedTable };
     } catch (error: any) {
@@ -216,13 +228,36 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
   // Delete a table
   fastify.delete(
     "/api/personal-tasks/tables/:tableId",
+    { preHandler: [verifyAccessToken] },
     async (request, reply) => {
       try {
         if (!fastify.drizzle) {
           return reply.status(500).send({ error: "Database not available" });
         }
 
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) {
+          return reply.status(401).send({ error: "Unauthorized" });
+        }
+        const userId = authRequest.user.userId;
+
         const { tableId } = request.params as { tableId: string };
+
+        // Verify ownership before deleting
+        const [existingTable] = await fastify.drizzle
+          .select()
+          .from(tableWeeks)
+          .where(
+            and(
+              eq(tableWeeks.tableId, tableId),
+              eq(tableWeeks.userId, userId)
+            )
+          )
+          .limit(1);
+
+        if (!existingTable) {
+          return reply.status(404).send({ error: "Table not found" });
+        }
 
         await fastify.drizzle
           .delete(tableWeeks)
@@ -237,7 +272,10 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   // Create a swimlane
-  fastify.post("/api/personal-tasks/swimlanes", async (request, reply) => {
+  fastify.post(
+    "/api/personal-tasks/swimlanes",
+    { preHandler: [verifyAccessToken] },
+    async (request, reply) => {
     try {
       if (!fastify.drizzle) {
         return reply.status(500).send({ error: "Database not available" });
@@ -270,6 +308,7 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
   // Update a swimlane
   fastify.put(
     "/api/personal-tasks/swimlanes/:swimlaneId",
+    { preHandler: [verifyAccessToken] },
     async (request, reply) => {
       try {
         if (!fastify.drizzle) {
@@ -307,6 +346,7 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
   // Delete a swimlane
   fastify.delete(
     "/api/personal-tasks/swimlanes/:swimlaneId",
+    { preHandler: [verifyAccessToken] },
     async (request, reply) => {
       try {
         if (!fastify.drizzle) {
@@ -328,7 +368,10 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   // Create a task
-  fastify.post("/api/personal-tasks/tasks", async (request, reply) => {
+  fastify.post(
+    "/api/personal-tasks/tasks",
+    { preHandler: [verifyAccessToken] },
+    async (request, reply) => {
     try {
       if (!fastify.drizzle) {
         return reply.status(500).send({ error: "Database not available" });
@@ -363,7 +406,10 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // Update a task
-  fastify.put("/api/personal-tasks/tasks/:taskId", async (request, reply) => {
+  fastify.put(
+    "/api/personal-tasks/tasks/:taskId",
+    { preHandler: [verifyAccessToken] },
+    async (request, reply) => {
     try {
       if (!fastify.drizzle) {
         return reply.status(500).send({ error: "Database not available" });
@@ -400,6 +446,7 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
   // Delete a task
   fastify.delete(
     "/api/personal-tasks/tasks/:taskId",
+    { preHandler: [verifyAccessToken] },
     async (request, reply) => {
       try {
         if (!fastify.drizzle) {

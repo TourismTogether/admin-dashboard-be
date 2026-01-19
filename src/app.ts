@@ -90,6 +90,27 @@ const app: FastifyPluginAsync<AppOptions> = async (
 
   // Error handler
   fastify.setErrorHandler((error: FastifyError, request, reply) => {
+    // Handle AuthenticationError
+    if ((error as any).authMethod) {
+      const authError = error as any;
+      fastify.log.warn(
+        {
+          err: {
+            name: error.name,
+            message: error.message,
+            code: authError.code,
+            authMethod: authError.authMethod,
+          },
+        },
+        "Authentication error"
+      );
+      return reply.status(authError.statusCode || 401).send({
+        error: authError.code || "auth_error",
+        message: authError.message,
+        authMethod: authError.authMethod,
+      });
+    }
+
     if (error.validation) {
       // Handle Fastify's validation errors (client-side)
       fastify.log.warn(
@@ -114,7 +135,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
         fastify.log.error(error);
       }
       reply.status(error.statusCode).send({
-        error: error.code,
+        error: (error as any).code || "error",
         message: error.message,
       });
     } else {
