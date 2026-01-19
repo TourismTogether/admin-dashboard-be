@@ -45,6 +45,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
   opts
 ): Promise<void> => {
   // Configure CORS
+  const isDevelopment = process.env.NODE_ENV !== "production";
   const allowedOrigins = new Set(
     [
       "http://localhost:3000",
@@ -52,28 +53,47 @@ const app: FastifyPluginAsync<AppOptions> = async (
       "http://localhost:5173",
       "http://localhost:5174",
       "http://localhost:5175",
+      "http://localhost:8081",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:5174",
+      "http://127.0.0.1:5175",
+      "http://127.0.0.1:8081",
       // Add production origins here
     ].map((origin) => origin.toLowerCase())
   );
 
   await fastify.register(cors, {
     credentials: true,
-    strictPreflight: true,
+    strictPreflight: false, // Allow preflight to pass through even if origin is not in list initially
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: [
       "Content-Type",
       "Authorization",
     ],
     origin: (origin, cb) => {
+      // Allow requests with no origin (same-origin requests, Postman, etc.)
       if (!origin) {
-        return cb(null, false);
+        fastify.log.debug("CORS: Allowing request with no origin");
+        return cb(null, true);
       }
 
-      if (allowedOrigins.has(origin.toLowerCase())) {
+      const normalizedOrigin = origin.toLowerCase();
+      
+      // In development, allow all localhost origins
+      if (isDevelopment) {
+        if (normalizedOrigin.startsWith("http://localhost:") || 
+            normalizedOrigin.startsWith("http://127.0.0.1:")) {
+          fastify.log.debug({ origin: normalizedOrigin }, "CORS: Allowed localhost origin (dev mode)");
+          return cb(null, origin);
+        }
+      }
+      
+      if (allowedOrigins.has(normalizedOrigin)) {
+        fastify.log.debug({ origin: normalizedOrigin }, "CORS: Allowed origin");
         return cb(null, origin);
       }
 
-      fastify.log.debug({ origin }, "Blocked CORS origin");
+      fastify.log.warn({ origin: normalizedOrigin }, "CORS: Blocked origin");
       return cb(null, false);
     },
   });
