@@ -102,7 +102,17 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
         const swimlaneIds = swimlanes.map((s) => s.swimlaneId);
         const tasks = swimlaneIds.length > 0
           ? await fastify.drizzle
-              .select()
+              .select({
+                taskId: personalTasks.taskId,
+                swimlaneId: personalTasks.swimlaneId,
+                content: personalTasks.content,
+                status: personalTasks.status,
+                priority: personalTasks.priority,
+                detail: personalTasks.detail,
+                taskDate: personalTasks.taskDate,
+                createdAt: personalTasks.createdAt,
+                updatedAt: personalTasks.updatedAt,
+              })
               .from(personalTasks)
               .where(inArray(personalTasks.swimlaneId, swimlaneIds))
           : [];
@@ -470,6 +480,8 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           status?: string;
           priority?: string;
           detail?: string;
+          taskDate?: string;
+          swimlaneId?: string;
         };
 
         const [updatedTask] = await fastify.drizzle
