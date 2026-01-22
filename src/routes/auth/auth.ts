@@ -149,7 +149,7 @@ export async function generateAccessToken(
     email,
   };
   
-  return await new SignJWT(payload)
+  return await new SignJWT(payload as JWTPayload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(expirationTime)
