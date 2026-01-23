@@ -5,6 +5,7 @@ import { verifyAccessToken, AuthenticatedRequest } from "../auth/auth";
 import {
   getPortfolioRouteSchema,
   upsertPortfolioRouteSchema,
+  deletePortfolioRouteSchema,
 } from "./schemas";
 
 // Calculate commits from personal tasks done
@@ -149,6 +150,49 @@ const portfolioRoutes: FastifyPluginAsync = async (fastify) => {
             commits,
           },
         };
+      } catch (error: any) {
+        fastify.log.error(error);
+        return reply.status(500).send({ error: error.message || "Internal server error" });
+      }
+    }
+  );
+
+  // Delete portfolio
+  fastify.delete(
+    "/api/portfolio",
+    {
+      schema: deletePortfolioRouteSchema,
+      preHandler: [verifyAccessToken],
+    },
+    async (request, reply) => {
+      try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
+
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) {
+          return reply.status(401).send({ error: "Unauthorized" });
+        }
+        const userId = authRequest.user.userId;
+
+        // Check if portfolio exists
+        const [existing] = await fastify.drizzle
+          .select()
+          .from(portfolios)
+          .where(eq(portfolios.userId, userId))
+          .limit(1);
+
+        if (!existing) {
+          return reply.status(404).send({ error: "Portfolio not found" });
+        }
+
+        // Delete portfolio
+        await fastify.drizzle
+          .delete(portfolios)
+          .where(eq(portfolios.userId, userId));
+
+        return { message: "Portfolio deleted successfully" };
       } catch (error: any) {
         fastify.log.error(error);
         return reply.status(500).send({ error: error.message || "Internal server error" });
