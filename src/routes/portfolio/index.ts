@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from "fastify";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { portfolios, personalTasks, tableSwimlanes, tableWeeks } from "../../db/schema";
 import { verifyAccessToken, AuthenticatedRequest } from "../auth/auth";
 import {
@@ -193,6 +193,69 @@ const portfolioRoutes: FastifyPluginAsync = async (fastify) => {
           .where(eq(portfolios.userId, userId));
 
         return { message: "Portfolio deleted successfully" };
+      } catch (error: any) {
+        fastify.log.error(error);
+        return reply.status(500).send({ error: error.message || "Internal server error" });
+      }
+    }
+  );
+
+  // Get contribution calendar data (tasks done by date)
+  fastify.get(
+    "/api/portfolio/contributions",
+    {
+      preHandler: [verifyAccessToken],
+    },
+    async (request, reply) => {
+      try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
+
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) {
+          return reply.status(401).send({ error: "Unauthorized" });
+        }
+        const userId = authRequest.user.userId;
+
+        // Get tasks done grouped by date (last 365 days)
+        // Calculate exactly 365 days ago (not 1 year ago)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const daysAgo365 = new Date(today);
+        daysAgo365.setDate(daysAgo365.getDate() - 364); // 364 days ago = 365 days including today
+        daysAgo365.setHours(0, 0, 0, 0);
+        const daysAgo365Str = daysAgo365.toISOString().split("T")[0];
+
+        const contributions = await fastify.drizzle
+          .select({
+            date: sql<string>`${personalTasks.taskDate}::text`,
+            count: sql<number>`COUNT(*)::int`,
+          })
+          .from(personalTasks)
+          .innerJoin(tableSwimlanes, eq(personalTasks.swimlaneId, tableSwimlanes.swimlaneId))
+          .innerJoin(tableWeeks, eq(tableSwimlanes.tableId, tableWeeks.tableId))
+          .where(
+            and(
+              eq(tableWeeks.userId, userId),
+              eq(personalTasks.status, "done"),
+              sql`${personalTasks.taskDate} >= ${sql.raw(`'${daysAgo365Str}'`)}`
+            )
+          )
+          .groupBy(personalTasks.taskDate);
+
+        // Convert to map for easy lookup
+        // Ensure date is in YYYY-MM-DD format
+        const contributionMap: Record<string, number> = {};
+        contributions.forEach((item) => {
+          // PostgreSQL date::text returns YYYY-MM-DD format, but ensure it's normalized
+          const dateStr = item.date.split("T")[0]; // Remove time part if present
+          contributionMap[dateStr] = item.count;
+        });
+
+        return {
+          data: contributionMap,
+        };
       } catch (error: any) {
         fastify.log.error(error);
         return reply.status(500).send({ error: error.message || "Internal server error" });
