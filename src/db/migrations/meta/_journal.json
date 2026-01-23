@@ -15,6 +15,13 @@
       "when": 1768794167676,
       "tag": "0001_volatile_metal_master",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769138303930,
+      "tag": "0002_optimal_lenny_balinger",
+      "breakpoints": true
     }
   ]
 }
