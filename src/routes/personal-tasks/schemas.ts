@@ -78,6 +78,17 @@ export const getTableRouteSchema: FastifySchema = {
                         status: { type: "string" },
                         priority: { type: "string" },
                         detail: { type: "string", nullable: true },
+                        checklist: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              description: { type: "string" },
+                              isComplete: { type: "boolean" },
+                            },
+                          },
+                          nullable: true,
+                        },
                         taskDate: { type: "string", format: "date" },
                         createdAt: { type: "string", format: "date-time" },
                         updatedAt: { type: "string", format: "date-time" },
@@ -348,6 +359,23 @@ export const createTaskRouteSchema: FastifySchema = {
       status: { type: "string", enum: ["todo", "in_progress", "reopen", "done", "delay"] },
       priority: { type: "string", enum: ["low", "medium", "high"] },
       detail: { type: "string" },
+      checklist: {
+        anyOf: [
+          {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string" },
+                description: { type: "string" },
+                isComplete: { type: "boolean" },
+              },
+              required: ["id", "description", "isComplete"],
+            },
+          },
+          { type: "null" },
+        ],
+      },
       taskDate: { type: "string", format: "date" },
     },
   },
@@ -364,6 +392,18 @@ export const createTaskRouteSchema: FastifySchema = {
             status: { type: "string" },
             priority: { type: "string" },
             detail: { type: "string", nullable: true },
+            checklist: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  description: { type: "string" },
+                  isComplete: { type: "boolean" },
+                },
+              },
+              nullable: true,
+            },
             taskDate: { type: "string", format: "date" },
           },
         },
@@ -393,6 +433,23 @@ export const updateTaskRouteSchema: FastifySchema = {
       status: { type: "string", enum: ["todo", "in_progress", "reopen", "done", "delay"] },
       priority: { type: "string", enum: ["low", "medium", "high"] },
       detail: { type: "string" },
+      checklist: {
+        anyOf: [
+          {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string" },
+                description: { type: "string" },
+                isComplete: { type: "boolean" },
+              },
+              required: ["id", "description", "isComplete"],
+            },
+          },
+          { type: "null" },
+        ],
+      },
       taskDate: { type: "string", format: "date" },
       swimlaneId: { type: "string" },
     },
@@ -410,6 +467,18 @@ export const updateTaskRouteSchema: FastifySchema = {
             status: { type: "string" },
             priority: { type: "string" },
             detail: { type: "string", nullable: true },
+            checklist: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  description: { type: "string" },
+                  isComplete: { type: "boolean" },
+                },
+              },
+              nullable: true,
+            },
           },
         },
       },
@@ -442,6 +511,56 @@ export const deleteTaskRouteSchema: FastifySchema = {
       type: "object",
       properties: {
         message: { type: "string" },
+      },
+    },
+    500: {
+      type: "object",
+      properties: {
+        error: { type: "string" },
+      },
+    },
+  },
+};
+
+export const getRecentTasksRouteSchema: FastifySchema = {
+  response: {
+    200: {
+      type: "object",
+      properties: {
+        data: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              taskId: { type: "string" },
+              swimlaneId: { type: "string" },
+              content: { type: "string" },
+              status: { type: "string" },
+              priority: { type: "string" },
+              detail: { type: "string", nullable: true },
+              checklist: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    description: { type: "string" },
+                    isComplete: { type: "boolean" },
+                  },
+                },
+                nullable: true,
+              },
+              taskDate: { type: "string", format: "date" },
+              createdAt: { type: "string", format: "date-time" },
+              updatedAt: { type: "string", format: "date-time" },
+            },
+          },
+        },
+      },
+    },
+    401: {
+      type: "object",
+      properties: {
+        error: { type: "string" },
       },
     },
     500: {
