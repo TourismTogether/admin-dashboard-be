@@ -182,6 +182,14 @@ const app: FastifyPluginAsync<AppOptions> = async (
     console.log("Server is closing");
   });
 
+  // @deprecated - Server will mainly be shut down, email sending is now manual via API endpoint
+  // Schedule weekly personal tasks email job after server is ready
+  // fastify.ready().then(() => {
+  //   const { scheduleWeeklyPersonalTasksEmailJob } = require("./jobs/weeklyPersonalTasksEmail");
+  //   scheduleWeeklyPersonalTasksEmailJob(fastify);
+  //   fastify.log.info("[app] Weekly personal tasks email job scheduled");
+  // });
+
   // This loads all plugins defined in plugins
   // those should be support plugins that are reused
   // through your application
@@ -203,11 +211,13 @@ const app: FastifyPluginAsync<AppOptions> = async (
   const personalTasksRoutes = await import("./routes/personal-tasks/index");
   const groupTasksRoutes = await import("./routes/group-tasks/index");
   const portfolioRoutes = await import("./routes/portfolio/index");
+  const settingsRoutes = await import("./routes/settings/index");
   
   await fastify.register(authRoutes.default);
   await fastify.register(personalTasksRoutes.default);
   await fastify.register(groupTasksRoutes.default);
   await fastify.register(portfolioRoutes.default);
+  await fastify.register(settingsRoutes.default);
 };
 
 export default app;

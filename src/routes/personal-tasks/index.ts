@@ -20,6 +20,7 @@ import {
   deleteTaskRouteSchema,
   getRecentTasksRouteSchema,
 } from "./schemas";
+import { sendWeeklyEmailForUser } from "../../jobs/weeklyPersonalTasksEmail";
 
 const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
   // Get all tables for a user
@@ -621,6 +622,42 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
         return { data: recentTasks };
       } catch (error: any) {
         fastify.log.error({ err: error }, "Error fetching recent tasks");
+        return reply.status(500).send({ error: error.message });
+      }
+    }
+  );
+
+  // Send weekly email report for current week (manual trigger)
+  fastify.post(
+    "/api/personal-tasks/send-weekly-email",
+    {
+      preHandler: [verifyAccessToken],
+    },
+    async (request, reply) => {
+      try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
+
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) {
+          return reply.status(401).send({ error: "Unauthorized" });
+        }
+        const userId = authRequest.user.userId;
+
+        const result = await sendWeeklyEmailForUser(fastify, userId);
+
+        if (!result.success) {
+          return reply.status(400).send({
+            error: result.message,
+          });
+        }
+
+        return {
+          message: result.message,
+        };
+      } catch (error: any) {
+        fastify.log.error({ err: error }, "Error sending weekly email");
         return reply.status(500).send({ error: error.message });
       }
     }
