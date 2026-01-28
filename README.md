@@ -32,6 +32,14 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 SUPABASE_DB_PASSWORD=your_database_password
 # Alternatively, you can provide the full connection string:
 # SUPABASE_DB_URL=postgresql://postgres:password@db.project-ref.supabase.co:5432/postgres
+
+# SMTP Configuration (for sending emails)
+# Required for weekly personal task email reports
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM=your-email@gmail.com
 ```
 
 **Note:** For admin operations, it's recommended to use `SUPABASE_SERVICE_ROLE_KEY` which bypasses Row Level Security (RLS). For client-side operations, use `SUPABASE_ANON_KEY`.

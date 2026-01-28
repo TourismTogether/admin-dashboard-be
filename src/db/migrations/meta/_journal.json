@@ -15,6 +15,27 @@
       "when": 1768794167676,
       "tag": "0001_volatile_metal_master",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769138303930,
+      "tag": "0002_optimal_lenny_balinger",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1769270227344,
+      "tag": "0003_sour_silverclaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1769507683886,
+      "tag": "0004_freezing_silver_samurai",
+      "breakpoints": true
     }
   ]
 }

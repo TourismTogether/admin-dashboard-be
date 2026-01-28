@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from "fastify";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, desc } from "drizzle-orm";
 import {
   tableWeeks,
   tableSwimlanes,
@@ -18,7 +18,9 @@ import {
   createTaskRouteSchema,
   updateTaskRouteSchema,
   deleteTaskRouteSchema,
+  getRecentTasksRouteSchema,
 } from "./schemas";
+import { sendWeeklyEmailForUser } from "../../jobs/weeklyPersonalTasksEmail";
 
 const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
   // Get all tables for a user
@@ -109,6 +111,7 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
                 status: personalTasks.status,
                 priority: personalTasks.priority,
                 detail: personalTasks.detail,
+                checklist: personalTasks.checklist,
                 taskDate: personalTasks.taskDate,
                 createdAt: personalTasks.createdAt,
                 updatedAt: personalTasks.updatedAt,
@@ -438,8 +441,19 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           status?: string;
           priority?: string;
           detail?: string;
+          checklist?: Array<{ id: string; description: string; isComplete: boolean }>;
           taskDate: string; // YYYY-MM-DD format
         };
+
+        // Handle checklist: if null, set to null; if array with items, set array; if empty array, set to null
+        let checklistValue = null;
+        if (body.checklist === null) {
+          checklistValue = null;
+        } else if (Array.isArray(body.checklist) && body.checklist.length > 0) {
+          checklistValue = body.checklist;
+        } else {
+          checklistValue = null;
+        }
 
         const [newTask] = await fastify.drizzle
           .insert(personalTasks)
@@ -448,7 +462,8 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
             content: body.content,
             status: body.status || "todo",
             priority: body.priority || "medium",
-            detail: body.detail,
+            detail: body.detail || null,
+            checklist: checklistValue,
             taskDate: body.taskDate,
           })
           .returning();
@@ -480,16 +495,37 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           status?: string;
           priority?: string;
           detail?: string;
+          checklist?: Array<{ id: string; description: string; isComplete: boolean }>;
           taskDate?: string;
           swimlaneId?: string;
         };
 
+        const updateData: any = {
+          updatedAt: new Date(),
+        };
+        
+        // Only include fields that are provided
+        if (body.content !== undefined) updateData.content = body.content;
+        if (body.status !== undefined) updateData.status = body.status;
+        if (body.priority !== undefined) updateData.priority = body.priority;
+        if (body.detail !== undefined) updateData.detail = body.detail || null;
+        if (body.taskDate !== undefined) updateData.taskDate = body.taskDate;
+        if (body.swimlaneId !== undefined) updateData.swimlaneId = body.swimlaneId;
+        
+        // Handle checklist: if null, set to null; if array with items, set array; if empty array, set to null
+        if (body.checklist !== undefined) {
+          if (body.checklist === null) {
+            updateData.checklist = null;
+          } else if (Array.isArray(body.checklist) && body.checklist.length > 0) {
+            updateData.checklist = body.checklist;
+          } else {
+            updateData.checklist = null;
+          }
+        }
+
         const [updatedTask] = await fastify.drizzle
           .update(personalTasks)
-          .set({
-            ...body,
-            updatedAt: new Date(),
-          })
+          .set(updateData)
           .where(eq(personalTasks.taskId, taskId))
           .returning();
 
@@ -527,6 +563,101 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
         return { message: "Task deleted successfully" };
       } catch (error: any) {
         fastify.log.error({ err: error }, "Error deleting task");
+        return reply.status(500).send({ error: error.message });
+      }
+    }
+  );
+
+  // Get recent tasks (last 10)
+  fastify.get(
+    "/api/personal-tasks/tasks/recent",
+    {
+      schema: getRecentTasksRouteSchema,
+      preHandler: [verifyAccessToken],
+    },
+    async (request, reply) => {
+      try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
+
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) {
+          return reply.status(401).send({ error: "Unauthorized" });
+        }
+        const userId = authRequest.user.userId;
+
+        // Get all swimlane IDs for this user
+        const userSwimlanes = await fastify.drizzle
+          .select({ swimlaneId: tableSwimlanes.swimlaneId })
+          .from(tableSwimlanes)
+          .innerJoin(tableWeeks, eq(tableSwimlanes.tableId, tableWeeks.tableId))
+          .where(eq(tableWeeks.userId, userId));
+
+        const swimlaneIds = userSwimlanes.map((s) => s.swimlaneId);
+
+        if (swimlaneIds.length === 0) {
+          return { data: [] };
+        }
+
+        // Get 10 most recent tasks ordered by updatedAt
+        const recentTasks = await fastify.drizzle
+          .select({
+            taskId: personalTasks.taskId,
+            swimlaneId: personalTasks.swimlaneId,
+            content: personalTasks.content,
+            status: personalTasks.status,
+            priority: personalTasks.priority,
+            detail: personalTasks.detail,
+            checklist: personalTasks.checklist,
+            taskDate: personalTasks.taskDate,
+            createdAt: personalTasks.createdAt,
+            updatedAt: personalTasks.updatedAt,
+          })
+          .from(personalTasks)
+          .where(inArray(personalTasks.swimlaneId, swimlaneIds))
+          .orderBy(desc(personalTasks.updatedAt))
+          .limit(10);
+
+        return { data: recentTasks };
+      } catch (error: any) {
+        fastify.log.error({ err: error }, "Error fetching recent tasks");
+        return reply.status(500).send({ error: error.message });
+      }
+    }
+  );
+
+  // Send weekly email report for current week (manual trigger)
+  fastify.post(
+    "/api/personal-tasks/send-weekly-email",
+    {
+      preHandler: [verifyAccessToken],
+    },
+    async (request, reply) => {
+      try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
+
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) {
+          return reply.status(401).send({ error: "Unauthorized" });
+        }
+        const userId = authRequest.user.userId;
+
+        const result = await sendWeeklyEmailForUser(fastify, userId);
+
+        if (!result.success) {
+          return reply.status(400).send({
+            error: result.message,
+          });
+        }
+
+        return {
+          message: result.message,
+        };
+      } catch (error: any) {
+        fastify.log.error({ err: error }, "Error sending weekly email");
         return reply.status(500).send({ error: error.message });
       }
     }

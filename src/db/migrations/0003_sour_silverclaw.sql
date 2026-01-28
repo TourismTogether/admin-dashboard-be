@@ -1,0 +1,1 @@
+ALTER TABLE "personal_tasks" ADD COLUMN "checklist" jsonb;

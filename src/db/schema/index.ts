@@ -9,3 +9,5 @@ export * from "./userGroupTasks";
 export * from "./tableWeeks";
 export * from "./tableSwimlanes";
 export * from "./personalTasks";
+export * from "./portfolios";
+export * from "./userSettings";
