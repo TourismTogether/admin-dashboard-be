@@ -29,6 +29,18 @@ export const getGroupTasksRouteSchema: FastifySchema = {
               note: { type: "string", nullable: true },
               createdAt: { type: "string", format: "date-time" },
               updatedAt: { type: "string", format: "date-time" },
+              assignees: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    userId: { type: "string" },
+                    email: { type: "string" },
+                    nickname: { type: ["string", "null"] },
+                    fullname: { type: ["string", "null"] },
+                  },
+                },
+              },
             },
           },
         },
@@ -75,6 +87,18 @@ export const getGroupTaskRouteSchema: FastifySchema = {
             note: { type: "string", nullable: true },
             createdAt: { type: "string", format: "date-time" },
             updatedAt: { type: "string", format: "date-time" },
+            assignees: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  userId: { type: "string" },
+                  email: { type: "string" },
+                  nickname: { type: ["string", "null"] },
+                  fullname: { type: ["string", "null"] },
+                },
+              },
+            },
           },
         },
       },
@@ -107,6 +131,10 @@ export const createGroupTaskRouteSchema: FastifySchema = {
       requirement: { type: "string" },
       delivery: { type: "string" },
       note: { type: "string" },
+      assigneeIds: {
+        type: "array",
+        items: { type: "string" },
+      },
     },
   },
   response: {
@@ -125,6 +153,18 @@ export const createGroupTaskRouteSchema: FastifySchema = {
             requirement: { type: "string", nullable: true },
             delivery: { type: "string", nullable: true },
             note: { type: "string", nullable: true },
+            assignees: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  userId: { type: "string" },
+                  email: { type: "string" },
+                  nickname: { type: ["string", "null"] },
+                  fullname: { type: ["string", "null"] },
+                },
+              },
+            },
           },
         },
       },
@@ -156,6 +196,10 @@ export const updateGroupTaskRouteSchema: FastifySchema = {
       requirement: { type: "string" },
       delivery: { type: "string" },
       note: { type: "string" },
+      assigneeIds: {
+        type: "array",
+        items: { type: "string" },
+      },
     },
   },
   response: {
