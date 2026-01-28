@@ -202,9 +202,11 @@ const app: FastifyPluginAsync<AppOptions> = async (
   const authRoutes = await import("./routes/auth/index");
   const personalTasksRoutes = await import("./routes/personal-tasks/index");
   const groupTasksRoutes = await import("./routes/group-tasks/index");
+  const groupsRoutes = await import("./routes/groups/index");
   
   await fastify.register(authRoutes.default);
   await fastify.register(personalTasksRoutes.default);
+  await fastify.register(groupsRoutes.default);
   await fastify.register(groupTasksRoutes.default);
 };
 
