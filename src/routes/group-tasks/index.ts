@@ -252,7 +252,7 @@ const groupTasksRoutes: FastifyPluginAsync = async (fastify) => {
           : [];
 
         // Only assign explicitly selected users; do not auto-assign creator
-        const uniqueAssigneeIds = Array.from(new Set(requestedAssignees));
+        const uniqueAssigneeIds = Array.from(new Set(requestedAssignees)) as string[];
 
         // Validate assignees are members of the group
         if (uniqueAssigneeIds.length > 0) {
@@ -374,9 +374,9 @@ const groupTasksRoutes: FastifyPluginAsync = async (fastify) => {
         if (assigneeIds) {
           const requestedAssignees = Array.isArray(assigneeIds)
             ? assigneeIds.filter((id: unknown) => typeof id === "string")
-            : [];
+            : [] as string[];
 
-          const uniqueAssigneeIds = Array.from(new Set(requestedAssignees));
+          const uniqueAssigneeIds = Array.from(new Set(requestedAssignees)) as string[];
 
           // Validate new assignees are members of the group
           if (uniqueAssigneeIds.length > 0) {
@@ -390,6 +390,19 @@ const groupTasksRoutes: FastifyPluginAsync = async (fastify) => {
             if (invalidIds.length > 0) {
               return reply.status(400).send({ error: "One or more assignees are not members of this group" });
             }
+          }
+
+          // Get current assignees to check for duplicates
+          const currentAssignees = await fastify.drizzle
+            .select({ userId: userGroupTasks.userId })
+            .from(userGroupTasks)
+            .where(eq(userGroupTasks.groupTaskId, groupTaskId));
+
+          const currentAssigneeIds = new Set(currentAssignees.map((a) => a.userId));
+          const duplicateIds = uniqueAssigneeIds.filter((id) => currentAssigneeIds.has(id));
+
+          if (duplicateIds.length > 0) {
+            return reply.status(400).send({ error: "One or more members are already assigned to this task" });
           }
 
           // Replace current assignments with new set
