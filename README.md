@@ -2,13 +2,25 @@
 
 Fastify server for admin dashboard application.
 
+## Prerequisites
+
+- Node.js 18+
+- pnpm 8+ (required package manager)
+
+## Installation
+
+### Install pnpm (if not already installed)
+
+```bash
+corepack enable
+corepack prepare pnpm@latest --activate
+```
+
 ## Setup
 
 1. Install dependencies:
 
 ```bash
-npm install
-# or
 pnpm install
 ```
 
@@ -49,13 +61,13 @@ SMTP_FROM=your-email@gmail.com
 3. Build the project:
 
 ```bash
-npm run build
+pnpm build
 ```
 
 4. Start the server:
 
 ```bash
-npm start
+pnpm start
 ```
 
 ## Development
@@ -63,7 +75,7 @@ npm start
 Run in development mode with hot reload:
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 ## Project Structure
@@ -71,12 +83,55 @@ npm run dev
 ```
 admin-dashboard-server/
 ├── src/
-│   ├── server.ts      # Entry point
-│   ├── app.ts         # Fastify app configuration
-│   ├── plugins/       # Fastify plugins (auto-loaded)
-│   └── routes/        # API routes (auto-loaded)
-├── dist/              # Compiled JavaScript (generated)
+│   ├── server.ts              # Entry point
+│   ├── app.ts                 # Fastify app configuration
+│   ├── plugins/               # Fastify plugins (auto-loaded)
+│   │   ├── drizzle.ts        # Drizzle ORM plugin
+│   │   └── supabase.ts       # Supabase client plugin
+│   ├── routes/               # API routes (auto-loaded)
+│   │   ├── auth/            # Authentication routes
+│   │   │   ├── auth.ts
+│   │   │   ├── index.ts
+│   │   │   └── schemas.ts
+│   │   ├── group-tasks/     # Group task routes
+│   │   │   ├── index.ts
+│   │   │   └── schemas.ts
+│   │   ├── groups/          # Group routes
+│   │   │   ├── index.ts
+│   │   │   └── schemas.ts
+│   │   ├── personal-tasks/  # Personal task routes
+│   │   │   ├── index.ts
+│   │   │   └── schemas.ts
+│   │   ├── portfolio/       # Portfolio routes
+│   │   │   ├── index.ts
+│   │   │   └── schemas.ts
+│   │   ├── settings/        # Settings routes
+│   │   │   ├── index.ts
+│   │   │   └── schemas.ts
+│   │   ├── root.ts         # Root route
+│   │   └── test-supabase.ts # Supabase test route
+│   ├── db/                  # Database configuration
+│   │   ├── schema/         # Database schemas
+│   │   │   ├── groups.ts
+│   │   │   ├── groupTasks.ts
+│   │   │   ├── memberships.ts
+│   │   │   ├── personalTasks.ts
+│   │   │   ├── portfolios.ts
+│   │   │   ├── tableSwimlanes.ts
+│   │   │   ├── tableWeeks.ts
+│   │   │   ├── userGroupTasks.ts
+│   │   │   ├── users.ts
+│   │   │   ├── userSettings.ts
+│   │   │   └── index.ts
+│   │   └── migrations/     # Database migrations
+│   ├── jobs/               # Background jobs
+│   │   └── weeklyPersonalTasksEmail.ts
+│   ├── utils/              # Utility functions
+│   │   └── email.ts
+│   └── dist/               # Compiled JavaScript (generated)
+├── drizzle.config.ts
 ├── package.json
+├── pnpm-lock.yaml
 ├── tsconfig.json
 └── README.md
 ```
@@ -106,7 +161,7 @@ After setting up your `.env` file, you can test the Supabase connection:
 1. Start the server:
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 2. Check configuration status:
@@ -179,7 +234,7 @@ export * from "./users";
 After defining your schema, generate migration files:
 
 ```bash
-npm run db:generate
+pnpm db:generate
 ```
 
 This will create migration files in `src/db/migrations/`.
@@ -189,7 +244,7 @@ This will create migration files in `src/db/migrations/`.
 Apply migrations to your Supabase database:
 
 ```bash
-npm run db:migrate
+pnpm db:migrate
 ```
 
 ### 4. Push schema directly (development only)
@@ -197,7 +252,7 @@ npm run db:migrate
 For quick development, you can push schema changes directly without migrations:
 
 ```bash
-npm run db:push
+pnpm db:push
 ```
 
 **Warning:** `db:push` is for development only. Use migrations (`db:migrate`) in production.
@@ -207,7 +262,7 @@ npm run db:push
 View and edit your database with Drizzle Studio:
 
 ```bash
-npm run db:studio
+pnpm db:studio
 ```
 
 ### Using Drizzle in Routes
@@ -243,3 +298,14 @@ const example: FastifyPluginAsync = async (fastify) => {
 
 export default example;
 ```
+
+## Available Scripts
+
+- `pnpm dev` - Run in development mode with hot reload
+- `pnpm build` - Build the project
+- `pnpm start` - Start the production server
+- `pnpm start:dev` - Start the server in development mode
+- `pnpm db:generate` - Generate database migrations
+- `pnpm db:migrate` - Apply database migrations
+- `pnpm db:push` - Push schema changes directly (development only)
+- `pnpm db:studio` - Open Drizzle Studio
