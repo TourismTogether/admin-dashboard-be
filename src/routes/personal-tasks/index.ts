@@ -1,10 +1,6 @@
 import { FastifyPluginAsync } from "fastify";
 import { eq, and, inArray, desc } from "drizzle-orm";
-import {
-  tableWeeks,
-  tableSwimlanes,
-  personalTasks,
-} from "../../db/schema";
+import { tableWeeks, tableSwimlanes, personalTasks } from "../../db/schema";
 import { verifyAccessToken, AuthenticatedRequest } from "../auth/auth";
 import {
   getTablesRouteSchema,
@@ -82,10 +78,7 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           .select()
           .from(tableWeeks)
           .where(
-            and(
-              eq(tableWeeks.tableId, tableId),
-              eq(tableWeeks.userId, userId)
-            )
+            and(eq(tableWeeks.tableId, tableId), eq(tableWeeks.userId, userId))
           )
           .limit(1);
 
@@ -102,23 +95,24 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
 
         // Get tasks for all swimlanes
         const swimlaneIds = swimlanes.map((s) => s.swimlaneId);
-        const tasks = swimlaneIds.length > 0
-          ? await fastify.drizzle
-              .select({
-                taskId: personalTasks.taskId,
-                swimlaneId: personalTasks.swimlaneId,
-                content: personalTasks.content,
-                status: personalTasks.status,
-                priority: personalTasks.priority,
-                detail: personalTasks.detail,
-                checklist: personalTasks.checklist,
-                taskDate: personalTasks.taskDate,
-                createdAt: personalTasks.createdAt,
-                updatedAt: personalTasks.updatedAt,
-              })
-              .from(personalTasks)
-              .where(inArray(personalTasks.swimlaneId, swimlaneIds))
-          : [];
+        const tasks =
+          swimlaneIds.length > 0
+            ? await fastify.drizzle
+                .select({
+                  taskId: personalTasks.taskId,
+                  swimlaneId: personalTasks.swimlaneId,
+                  content: personalTasks.content,
+                  status: personalTasks.status,
+                  priority: personalTasks.priority,
+                  detail: personalTasks.detail,
+                  checklist: personalTasks.checklist,
+                  taskDate: personalTasks.taskDate,
+                  createdAt: personalTasks.createdAt,
+                  updatedAt: personalTasks.updatedAt,
+                })
+                .from(personalTasks)
+                .where(inArray(personalTasks.swimlaneId, swimlaneIds))
+            : [];
 
         return {
           data: {
@@ -176,11 +170,11 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
             })
             .returning();
 
-          // Create 3 default swimlanes
+          // Create 3 default swimlanes: Morning, Afternoon, Evening
           const defaultSwimlanes = [
-            { content: "Sáng", startTime: "07:00:00", duration: 240 }, // 7h-11h (4 hours = 240 minutes)
-            { content: "Chiều", startTime: "14:00:00", duration: 180 }, // 2h-5h (3 hours = 180 minutes)
-            { content: "Tối", startTime: "18:00:00", duration: 360 }, // 6h-12h (6 hours = 360 minutes)
+            { content: "Morning", startTime: "07:00:00", duration: 240 }, // 07:00-11:00 (4h)
+            { content: "Afternoon", startTime: "14:00:00", duration: 180 }, // 14:00-17:00 (3h)
+            { content: "Evening", startTime: "18:00:00", duration: 360 }, // 18:00-00:00 (6h)
           ];
 
           const createdSwimlanes = await Promise.all(
@@ -239,10 +233,7 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           .select()
           .from(tableWeeks)
           .where(
-            and(
-              eq(tableWeeks.tableId, tableId),
-              eq(tableWeeks.userId, userId)
-            )
+            and(eq(tableWeeks.tableId, tableId), eq(tableWeeks.userId, userId))
           )
           .limit(1);
 
@@ -293,10 +284,7 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           .select()
           .from(tableWeeks)
           .where(
-            and(
-              eq(tableWeeks.tableId, tableId),
-              eq(tableWeeks.userId, userId)
-            )
+            and(eq(tableWeeks.tableId, tableId), eq(tableWeeks.userId, userId))
           )
           .limit(1);
 
@@ -441,7 +429,11 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           status?: string;
           priority?: string;
           detail?: string;
-          checklist?: Array<{ id: string; description: string; isComplete: boolean }>;
+          checklist?: Array<{
+            id: string;
+            description: string;
+            isComplete: boolean;
+          }>;
           taskDate: string; // YYYY-MM-DD format
         };
 
@@ -495,7 +487,11 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           status?: string;
           priority?: string;
           detail?: string;
-          checklist?: Array<{ id: string; description: string; isComplete: boolean }>;
+          checklist?: Array<{
+            id: string;
+            description: string;
+            isComplete: boolean;
+          }>;
           taskDate?: string;
           swimlaneId?: string;
         };
@@ -503,20 +499,24 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
         const updateData: any = {
           updatedAt: new Date(),
         };
-        
+
         // Only include fields that are provided
         if (body.content !== undefined) updateData.content = body.content;
         if (body.status !== undefined) updateData.status = body.status;
         if (body.priority !== undefined) updateData.priority = body.priority;
         if (body.detail !== undefined) updateData.detail = body.detail || null;
         if (body.taskDate !== undefined) updateData.taskDate = body.taskDate;
-        if (body.swimlaneId !== undefined) updateData.swimlaneId = body.swimlaneId;
-        
+        if (body.swimlaneId !== undefined)
+          updateData.swimlaneId = body.swimlaneId;
+
         // Handle checklist: if null, set to null; if array with items, set array; if empty array, set to null
         if (body.checklist !== undefined) {
           if (body.checklist === null) {
             updateData.checklist = null;
-          } else if (Array.isArray(body.checklist) && body.checklist.length > 0) {
+          } else if (
+            Array.isArray(body.checklist) &&
+            body.checklist.length > 0
+          ) {
             updateData.checklist = body.checklist;
           } else {
             updateData.checklist = null;
