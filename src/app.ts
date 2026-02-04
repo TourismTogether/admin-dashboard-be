@@ -66,10 +66,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
     credentials: true,
     strictPreflight: false, // Allow preflight to pass through even if origin is not in list initially
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-    ],
+    allowedHeaders: ["Content-Type", "Authorization"],
     origin: (origin, cb) => {
       // Allow requests with no origin (same-origin requests, Postman, etc.)
       if (!origin) {
@@ -78,16 +75,21 @@ const app: FastifyPluginAsync<AppOptions> = async (
       }
 
       const normalizedOrigin = origin.toLowerCase();
-      
+
       // In development, allow all localhost origins
       if (isDevelopment) {
-        if (normalizedOrigin.startsWith("http://localhost:") || 
-            normalizedOrigin.startsWith("http://127.0.0.1:")) {
-          fastify.log.debug({ origin: normalizedOrigin }, "CORS: Allowed localhost origin (dev mode)");
+        if (
+          normalizedOrigin.startsWith("http://localhost:") ||
+          normalizedOrigin.startsWith("http://127.0.0.1:")
+        ) {
+          fastify.log.debug(
+            { origin: normalizedOrigin },
+            "CORS: Allowed localhost origin (dev mode)"
+          );
           return cb(null, origin);
         }
       }
-      
+
       if (allowedOrigins.has(normalizedOrigin)) {
         fastify.log.debug({ origin: normalizedOrigin }, "CORS: Allowed origin");
         return cb(null, origin);
@@ -149,7 +151,11 @@ const app: FastifyPluginAsync<AppOptions> = async (
       if ((error.statusCode as number) < 500) {
         fastify.log.warn(
           {
-            err: { name: error.name, message: error.message, code: (error as any).code },
+            err: {
+              name: error.name,
+              message: error.message,
+              code: (error as any).code,
+            },
           },
           "Handled 4xx error"
         );
@@ -172,7 +178,10 @@ const app: FastifyPluginAsync<AppOptions> = async (
 
   // Allow DELETE requests without body even if Content-Type is set
   fastify.addHook("onRequest", async (request, reply) => {
-    if (request.method === "DELETE" && request.headers["content-type"]?.includes("application/json")) {
+    if (
+      request.method === "DELETE" &&
+      request.headers["content-type"]?.includes("application/json")
+    ) {
       // Remove content-type header for DELETE requests to avoid body validation
       delete request.headers["content-type"];
     }
@@ -199,27 +208,27 @@ const app: FastifyPluginAsync<AppOptions> = async (
   });
 
   // This loads all plugins defined in routes
-  // define your routes in one of these
   void fastify.register(AutoLoad, {
     dir: join(__dirname, "routes"),
     options: opts,
   });
-  
-  // Manually register routes from subdirectories
-  // Autoload should handle this, but we register explicitly as fallback
+
+  // Manually register routes from subdirectories (ensures correct path /api/*)
   const authRoutes = await import("./routes/auth/index");
   const personalTasksRoutes = await import("./routes/personal-tasks/index");
   const groupTasksRoutes = await import("./routes/group-tasks/index");
   const groupsRoutes = await import("./routes/groups/index");
   const portfolioRoutes = await import("./routes/portfolio/index");
   const settingsRoutes = await import("./routes/settings/index");
-  
+  const brainstormRoutes = await import("./routes/brainstorm/index");
+
   await fastify.register(authRoutes.default);
   await fastify.register(personalTasksRoutes.default);
   await fastify.register(groupsRoutes.default);
   await fastify.register(groupTasksRoutes.default);
   await fastify.register(portfolioRoutes.default);
   await fastify.register(settingsRoutes.default);
+  await fastify.register(brainstormRoutes.default);
 };
 
 export default app;

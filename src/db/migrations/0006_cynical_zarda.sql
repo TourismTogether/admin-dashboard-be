@@ -1,0 +1,1 @@
+ALTER TABLE "brainstorm" ADD COLUMN "name" varchar(255) DEFAULT 'Untitled' NOT NULL;

@@ -36,6 +36,20 @@
       "when": 1769507683886,
       "tag": "0004_freezing_silver_samurai",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1770171546726,
+      "tag": "0005_new_matthew_murdock",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1770172782008,
+      "tag": "0006_cynical_zarda",
+      "breakpoints": true
     }
   ]
 }
