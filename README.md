@@ -27,7 +27,7 @@ pnpm install
 2. Create a `.env` file in the root directory:
 
 ```env
-PORT=3000
+PORT=8081
 HOST=0.0.0.0
 NODE_ENV=development
 LOG_LEVEL=info
@@ -93,6 +93,9 @@ admin-dashboard-server/
 │   │   │   ├── auth.ts
 │   │   │   ├── index.ts
 │   │   │   └── schemas.ts
+│   │   ├── brainstorm/      # Brainstorm (Mermaid diagrams) routes
+│   │   │   ├── index.ts
+│   │   │   └── schemas.ts
 │   │   ├── group-tasks/     # Group task routes
 │   │   │   ├── index.ts
 │   │   │   └── schemas.ts
@@ -112,6 +115,7 @@ admin-dashboard-server/
 │   │   └── test-supabase.ts # Supabase test route
 │   ├── db/                  # Database configuration
 │   │   ├── schema/         # Database schemas
+│   │   │   ├── brainstorm.ts
 │   │   │   ├── groups.ts
 │   │   │   ├── groupTasks.ts
 │   │   │   ├── memberships.ts
@@ -167,13 +171,13 @@ pnpm dev
 2. Check configuration status:
 
 ```bash
-curl http://localhost:3000/test/supabase/config
+curl http://localhost:8081/test/supabase/config
 ```
 
 3. Test the connection:
 
 ```bash
-curl http://localhost:3000/test/supabase
+curl http://localhost:8081/test/supabase
 ```
 
 ## Using Supabase
