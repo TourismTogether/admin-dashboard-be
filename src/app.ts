@@ -9,10 +9,10 @@ import cors from "@fastify/cors";
 import pino from "pino";
 import pinoPretty from "pino-pretty";
 
-// Configure logger
+// Configure logger - only warn and error by default (set LOG_LEVEL to override)
 const logger = pino(
   {
-    level: process.env.LOG_LEVEL || "info",
+    level: process.env.LOG_LEVEL || "warn",
   },
   process.env.NODE_ENV === "production"
     ? undefined
