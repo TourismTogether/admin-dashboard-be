@@ -392,19 +392,6 @@ const groupTasksRoutes: FastifyPluginAsync = async (fastify) => {
             }
           }
 
-          // Get current assignees to check for duplicates
-          const currentAssignees = await fastify.drizzle
-            .select({ userId: userGroupTasks.userId })
-            .from(userGroupTasks)
-            .where(eq(userGroupTasks.groupTaskId, groupTaskId));
-
-          const currentAssigneeIds = new Set(currentAssignees.map((a) => a.userId));
-          const duplicateIds = uniqueAssigneeIds.filter((id) => currentAssigneeIds.has(id));
-
-          if (duplicateIds.length > 0) {
-            return reply.status(400).send({ error: "One or more members are already assigned to this task" });
-          }
-
           // Replace current assignments with new set
           await fastify.drizzle
             .delete(userGroupTasks)
@@ -473,11 +460,6 @@ const groupTasksRoutes: FastifyPluginAsync = async (fastify) => {
 
         if (!membership) {
           return reply.status(403).send({ error: "Access denied" });
-        }
-
-        // Only owner, admin, or leader can delete (roles stored lowercase)
-        if (!["owner", "admin", "leader"].includes(membership.role)) {
-          return reply.status(403).send({ error: "Only owner, admin, or leader can delete tasks" });
         }
 
         await fastify.drizzle

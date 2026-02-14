@@ -205,6 +205,51 @@ export const deleteGroupRouteSchema: FastifySchema = {
   },
 };
 
+export const removeGroupMemberRouteSchema: FastifySchema = {
+  params: {
+    type: "object",
+    required: ["groupId", "userId"],
+    properties: {
+      groupId: { type: "string", format: "uuid" },
+      userId: { type: "string", format: "uuid" },
+    },
+  },
+  response: {
+    200: {
+      type: "object",
+      properties: {
+        message: { type: "string" },
+      },
+    },
+    400: { type: "object", properties: { error: { type: "string" } } },
+    401: { type: "object", properties: { error: { type: "string" } } },
+    403: { type: "object", properties: { error: { type: "string" } } },
+    404: { type: "object", properties: { error: { type: "string" } } },
+    500: { type: "object", properties: { error: { type: "string" } } },
+  },
+};
+
+export const leaveGroupRouteSchema: FastifySchema = {
+  params: {
+    type: "object",
+    required: ["groupId"],
+    properties: {
+      groupId: { type: "string", format: "uuid" },
+    },
+  },
+  response: {
+    200: {
+      type: "object",
+      properties: {
+        message: { type: "string" },
+      },
+    },
+    401: { type: "object", properties: { error: { type: "string" } } },
+    403: { type: "object", properties: { error: { type: "string" } } },
+    500: { type: "object", properties: { error: { type: "string" } } },
+  },
+};
+
 export const updateGroupRouteSchema: FastifySchema = {
   params: {
     type: "object",
