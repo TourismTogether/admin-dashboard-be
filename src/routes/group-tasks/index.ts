@@ -48,6 +48,13 @@ const groupTasksRoutes: FastifyPluginAsync = async (fastify) => {
           return { data: [] };
         }
 
+        // When requesting a specific group, require membership (forbid access to other groups)
+        if (query.groupId) {
+          if (!groupIds.includes(query.groupId)) {
+            return reply.status(403).send({ error: "You are not a member of this group" });
+          }
+        }
+
         // Build query conditions
         const conditions = [inArray(groupTasks.groupId, groupIds)];
 
@@ -361,12 +368,29 @@ const groupTasksRoutes: FastifyPluginAsync = async (fastify) => {
         // Update task core fields
         const { assigneeIds, ...taskUpdateFields } = body;
 
+        const dateOnlyRe = /^\d{4}-\d{2}-\d{2}$/;
+        const toDateValue = (v: unknown): string | null => {
+          if (v == null || typeof v !== "string") return null;
+          const s = v.trim();
+          if (!s) return null;
+          const datePart = s.includes("T") ? s.split("T")[0] : s;
+          return dateOnlyRe.test(datePart) ? datePart : null;
+        };
+
+        const startDateVal = toDateValue(taskUpdateFields.startDate);
+        const endDateVal = toDateValue(taskUpdateFields.endDate);
+        const setFields: Record<string, unknown> = {
+          ...taskUpdateFields,
+          updatedAt: new Date(),
+        };
+        delete setFields.startDate;
+        delete setFields.endDate;
+        if (startDateVal !== null) setFields.startDate = startDateVal;
+        if (endDateVal !== null) setFields.endDate = endDateVal;
+
         const [updatedTask] = await fastify.drizzle
           .update(groupTasks)
-          .set({
-            ...taskUpdateFields,
-            updatedAt: new Date(),
-          })
+          .set(setFields as Partial<typeof groupTasks.$inferInsert>)
           .where(eq(groupTasks.groupTaskId, groupTaskId))
           .returning();
 
@@ -390,19 +414,6 @@ const groupTasksRoutes: FastifyPluginAsync = async (fastify) => {
             if (invalidIds.length > 0) {
               return reply.status(400).send({ error: "One or more assignees are not members of this group" });
             }
-          }
-
-          // Get current assignees to check for duplicates
-          const currentAssignees = await fastify.drizzle
-            .select({ userId: userGroupTasks.userId })
-            .from(userGroupTasks)
-            .where(eq(userGroupTasks.groupTaskId, groupTaskId));
-
-          const currentAssigneeIds = new Set(currentAssignees.map((a) => a.userId));
-          const duplicateIds = uniqueAssigneeIds.filter((id) => currentAssigneeIds.has(id));
-
-          if (duplicateIds.length > 0) {
-            return reply.status(400).send({ error: "One or more members are already assigned to this task" });
           }
 
           // Replace current assignments with new set
@@ -473,11 +484,6 @@ const groupTasksRoutes: FastifyPluginAsync = async (fastify) => {
 
         if (!membership) {
           return reply.status(403).send({ error: "Access denied" });
-        }
-
-        // Only owner, admin, or leader can delete (roles stored lowercase)
-        if (!["owner", "admin", "leader"].includes(membership.role)) {
-          return reply.status(403).send({ error: "Only owner, admin, or leader can delete tasks" });
         }
 
         await fastify.drizzle

@@ -9,6 +9,8 @@ import {
   deleteGroupRouteSchema,
   getGroupMembersRouteSchema,
   updateGroupRouteSchema,
+  removeGroupMemberRouteSchema,
+  leaveGroupRouteSchema,
 } from "./schemas";
 
 const groupsRoutes: FastifyPluginAsync = async (fastify) => {
@@ -257,6 +259,127 @@ const groupsRoutes: FastifyPluginAsync = async (fastify) => {
       } catch (error) {
         fastify.log.error(error);
         return reply.code(500).send({ error: "Failed to add member" });
+      }
+    }
+  );
+
+  // Remove a member from the group (kick) – owner/admin/leader only; cannot kick owner
+  fastify.delete(
+    "/api/groups/:groupId/members/:userId",
+    {
+      schema: removeGroupMemberRouteSchema,
+      preHandler: [verifyAccessToken],
+    },
+    async (request, reply) => {
+      try {
+        if (!fastify.drizzle) {
+          return reply.code(500).send({ error: "Database not available" });
+        }
+
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) {
+          return reply.code(401).send({ error: "Unauthorized" });
+        }
+
+        const requesterId = authRequest.user.userId;
+        const { groupId, userId: targetUserId } = request.params as { groupId: string; userId: string };
+
+        if (requesterId === targetUserId) {
+          return reply.code(400).send({ error: "Use Leave group to remove yourself" });
+        }
+
+        const [requesterMembership] = await fastify.drizzle
+          .select()
+          .from(memberships)
+          .where(and(eq(memberships.groupId, groupId), eq(memberships.userId, requesterId)))
+          .limit(1);
+
+        if (!requesterMembership) {
+          return reply.code(403).send({ error: "You are not a member of this group" });
+        }
+
+        const allowedRoles = new Set(["owner", "admin", "leader"]);
+        if (!allowedRoles.has(requesterMembership.role)) {
+          return reply.code(403).send({ error: "Insufficient permissions to remove members" });
+        }
+
+        const [targetMembership] = await fastify.drizzle
+          .select()
+          .from(memberships)
+          .where(and(eq(memberships.groupId, groupId), eq(memberships.userId, targetUserId)))
+          .limit(1);
+
+        if (!targetMembership) {
+          return reply.code(404).send({ error: "Member not found in this group" });
+        }
+
+        if (targetMembership.role === "owner") {
+          return reply.code(403).send({ error: "Cannot remove the group owner" });
+        }
+
+        await fastify.drizzle
+          .delete(memberships)
+          .where(and(eq(memberships.groupId, groupId), eq(memberships.userId, targetUserId)));
+
+        return reply.code(200).send({ message: "Member removed successfully" });
+      } catch (error) {
+        fastify.log.error(error);
+        return reply.code(500).send({ error: "Failed to remove member" });
+      }
+    }
+  );
+
+  // Leave group – current user removes themselves
+  fastify.post(
+    "/api/groups/:groupId/leave",
+    {
+      schema: leaveGroupRouteSchema,
+      preHandler: [verifyAccessToken],
+    },
+    async (request, reply) => {
+      try {
+        if (!fastify.drizzle) {
+          return reply.code(500).send({ error: "Database not available" });
+        }
+
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) {
+          return reply.code(401).send({ error: "Unauthorized" });
+        }
+
+        const userId = authRequest.user.userId;
+        const { groupId } = request.params as { groupId: string };
+
+        const [membership] = await fastify.drizzle
+          .select()
+          .from(memberships)
+          .where(and(eq(memberships.groupId, groupId), eq(memberships.userId, userId)))
+          .limit(1);
+
+        if (!membership) {
+          return reply.code(403).send({ error: "You are not a member of this group" });
+        }
+
+        if (membership.role === "owner") {
+          const ownerCount = await fastify.drizzle
+            .select()
+            .from(memberships)
+            .where(and(eq(memberships.groupId, groupId), eq(memberships.role, "owner")));
+          if (ownerCount.length <= 1) {
+            return reply.code(400).send({
+              error: "Owner cannot leave. Transfer ownership or delete the group first.",
+            });
+          }
+        }
+
+        await fastify.drizzle
+          .delete(memberships)
+          .where(and(eq(memberships.groupId, groupId), eq(memberships.userId, userId)));
+
+        return reply.code(200).send({ message: "Left group successfully" });
+      } catch (error) {
+        fastify.log.error(error);
+        return reply.code(500).send({ error: "Failed to leave group" });
       }
     }
   );
