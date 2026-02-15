@@ -77,7 +77,22 @@ ACCESS_TOKEN_EXPIRATION=7d
 pnpm build
 ```
 
-4. Start the server:
+4. Run migrations (creates/updates tables including `feedback` and `user_admin`):
+
+```bash
+pnpm run db:migrate
+pnpm run db:push
+```
+
+5. (Optional) Seed admin for Bug Reports: **Register in the app** with email `prto2802@gmail.com` first, then run:
+
+```bash
+pnpm run db:seed
+```
+
+This adds that user to the admin list (no duplicate account; uses the same `users` row).
+
+6. Start the server:
 
 ```bash
 pnpm start

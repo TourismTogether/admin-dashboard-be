@@ -241,6 +241,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
   const portfolioRoutes = await import("./routes/portfolio/index");
   const settingsRoutes = await import("./routes/settings/index");
   const brainstormRoutes = await import("./routes/brainstorm/index");
+  const feedbackRoutes = await import("./routes/feedback/index");
 
   await fastify.register(authRoutes.default);
   await fastify.register(personalTasksRoutes.default);
@@ -249,6 +250,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
   await fastify.register(portfolioRoutes.default);
   await fastify.register(settingsRoutes.default);
   await fastify.register(brainstormRoutes.default);
+  await fastify.register(feedbackRoutes.default);
 };
 
 export default app;

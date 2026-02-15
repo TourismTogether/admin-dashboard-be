@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import { FastifyPluginAsync } from "fastify";
 import { eq } from "drizzle-orm";
-import { users } from "../../db/schema";
+import { users, userAdmin } from "../../db/schema";
 import {
   generateAccessToken,
   verifyAccessToken,
@@ -34,6 +34,15 @@ const validatePassword = (password: string) => {
 
   return { isValid, errorMessage: null };
 };
+
+async function checkIsAdmin(drizzleDb: any, userId: string): Promise<boolean> {
+  const [row] = await drizzleDb
+    .select({ adminId: userAdmin.adminId })
+    .from(userAdmin)
+    .where(eq(userAdmin.userId, userId))
+    .limit(1);
+  return !!row;
+}
 
 const auth: FastifyPluginAsync = async (fastify) => {
   // Register endpoint
@@ -105,6 +114,7 @@ const auth: FastifyPluginAsync = async (fastify) => {
 
         // Generate access token
         const accessToken = await generateAccessToken(newUser.userId, newUser.email);
+        const isAdmin = await checkIsAdmin(fastify.drizzle!, newUser.userId);
 
         return reply.status(201).send({
           access_token: accessToken,
@@ -114,6 +124,7 @@ const auth: FastifyPluginAsync = async (fastify) => {
             account: newUser.account,
             nickname: newUser.nickname,
             fullname: newUser.fullname,
+            isAdmin,
           },
         });
       } catch (error: any) {
@@ -159,6 +170,7 @@ const auth: FastifyPluginAsync = async (fastify) => {
 
         // Generate access token
         const accessToken = await generateAccessToken(user.userId, user.email);
+        const isAdmin = await checkIsAdmin(fastify.drizzle!, user.userId);
 
         return reply.send({
           access_token: accessToken,
@@ -168,6 +180,7 @@ const auth: FastifyPluginAsync = async (fastify) => {
             account: user.account,
             nickname: user.nickname,
             fullname: user.fullname,
+            isAdmin,
           },
         });
       } catch (error: any) {
@@ -216,7 +229,13 @@ const auth: FastifyPluginAsync = async (fastify) => {
           return reply.status(404).send({ error: "User not found" });
         }
 
-        return reply.send({ user });
+        const isAdmin = await checkIsAdmin(fastify.drizzle!, user.userId);
+        return reply.send({
+          user: {
+            ...user,
+            isAdmin,
+          },
+        });
       } catch (error: any) {
         if (error instanceof AuthenticationError) {
           return reply.status(error.statusCode).send({
