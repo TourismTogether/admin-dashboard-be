@@ -69,19 +69,6 @@ const app: FastifyPluginAsync<AppOptions> = async (
     [...defaultOrigins, ...envOrigins].map((origin) => origin.toLowerCase())
   );
 
-  // Preflight OPTIONS: reply 204 with CORS (avoids addHook for Vercel serverless compatibility)
-  fastify.options("/*", async (request, reply) => {
-    const origin = request.headers.origin;
-    if (origin && allowedOrigins.has(origin.toLowerCase())) {
-      reply.header("Access-Control-Allow-Origin", origin);
-      reply.header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-      reply.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-      reply.header("Access-Control-Allow-Credentials", "true");
-      reply.header("Access-Control-Max-Age", "86400");
-    }
-    return reply.status(204).send();
-  });
-
   await fastify.register(cors, {
     credentials: true,
     strictPreflight: false, // Allow preflight to pass through even if origin is not in list initially
