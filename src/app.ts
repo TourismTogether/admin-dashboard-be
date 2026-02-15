@@ -62,6 +62,8 @@ const app: FastifyPluginAsync<AppOptions> = async (
     "http://127.0.0.1:5174",
     "http://127.0.0.1:5175",
     "http://127.0.0.1:8081",
+    // Vercel frontend (add more via CORS_ALLOWED_ORIGINS if needed)
+    "https://admin-dashboard-fe-six.vercel.app",
   ];
   const allowedOrigins = new Set(
     [...defaultOrigins, ...envOrigins].map((origin) => origin.toLowerCase())
