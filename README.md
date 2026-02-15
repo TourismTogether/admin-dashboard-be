@@ -2,6 +2,8 @@
 
 Fastify server for admin dashboard application.
 
+**Inspired by [OptimAI](https://optimai.network).**
+
 ## Prerequisites
 
 - Node.js 18+
