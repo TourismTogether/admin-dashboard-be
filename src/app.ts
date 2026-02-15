@@ -69,6 +69,20 @@ const app: FastifyPluginAsync<AppOptions> = async (
     [...defaultOrigins, ...envOrigins].map((origin) => origin.toLowerCase())
   );
 
+  // Handle preflight OPTIONS immediately with 204 so CORS never gets non-2xx
+  fastify.addHook("onRequest", async (request, reply) => {
+    if (request.method !== "OPTIONS") return;
+    const origin = request.headers.origin;
+    if (origin && allowedOrigins.has(origin.toLowerCase())) {
+      reply.header("Access-Control-Allow-Origin", origin);
+      reply.header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+      reply.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+      reply.header("Access-Control-Allow-Credentials", "true");
+      reply.header("Access-Control-Max-Age", "86400");
+    }
+    return reply.status(204).send();
+  });
+
   await fastify.register(cors, {
     credentials: true,
     strictPreflight: false, // Allow preflight to pass through even if origin is not in list initially
