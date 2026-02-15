@@ -6,6 +6,7 @@ import fastify, {
 } from "fastify";
 import { join } from "path";
 import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
 import pino from "pino";
 import pinoPretty from "pino-pretty";
 
@@ -44,22 +45,26 @@ const app: FastifyPluginAsync<AppOptions> = async (
   fastify,
   opts
 ): Promise<void> => {
-  // Configure CORS
+  // Configure CORS: use CORS_ALLOWED_ORIGINS in production (comma-separated)
   const isDevelopment = process.env.NODE_ENV !== "production";
+  const envOrigins = (process.env.CORS_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((o) => o.trim().toLowerCase())
+    .filter(Boolean);
+  const defaultOrigins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "http://localhost:8081",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://127.0.0.1:5175",
+    "http://127.0.0.1:8081",
+  ];
   const allowedOrigins = new Set(
-    [
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:5175",
-      "http://localhost:8081",
-      "http://127.0.0.1:5173",
-      "http://127.0.0.1:5174",
-      "http://127.0.0.1:5175",
-      "http://127.0.0.1:8081",
-      // Add production origins here
-    ].map((origin) => origin.toLowerCase())
+    [...defaultOrigins, ...envOrigins].map((origin) => origin.toLowerCase())
   );
 
   await fastify.register(cors, {
@@ -98,6 +103,13 @@ const app: FastifyPluginAsync<AppOptions> = async (
       fastify.log.warn({ origin: normalizedOrigin }, "CORS: Blocked origin");
       return cb(null, false);
     },
+  });
+
+  // Rate limit: reduce brute-force and abuse (tune RATE_LIMIT_MAX / RATE_LIMIT_WINDOW_MS in production)
+  await fastify.register(rateLimit, {
+    max: parseInt(process.env.RATE_LIMIT_MAX || "100", 10),
+    timeWindow: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000", 10), // 1 minute
+    allowList: process.env.RATE_LIMIT_ALLOW_IP ? process.env.RATE_LIMIT_ALLOW_IP.split(",").map((ip) => ip.trim()) : undefined,
   });
 
   fastify.addHook("onSend", async (request, reply, payload) => {
@@ -162,16 +174,24 @@ const app: FastifyPluginAsync<AppOptions> = async (
       } else {
         fastify.log.error(error);
       }
+      const is5xx = (error.statusCode as number) >= 500;
+      const safeMessage =
+        is5xx && process.env.NODE_ENV === "production"
+          ? "An unexpected error occurred"
+          : error.message;
       reply.status(error.statusCode).send({
         error: (error as any).code || "error",
-        message: error.message,
+        message: safeMessage,
       });
     } else {
       fastify.log.error(error);
-      // Default error response
+      // Default error response (never leak internal details in production)
       reply.status(500).send({
         error: "Internal Server Error",
-        message: "An unexpected error occurred",
+        message:
+          process.env.NODE_ENV === "production"
+            ? "An unexpected error occurred"
+            : error.message,
       });
     }
   });

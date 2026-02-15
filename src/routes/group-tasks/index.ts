@@ -112,7 +112,9 @@ const groupTasksRoutes: FastifyPluginAsync = async (fastify) => {
         return { data: tasksWithAssignees };
       } catch (error: any) {
         fastify.log.error({ err: error }, "Error fetching group tasks");
-        return reply.status(500).send({ error: error.message });
+        return reply.status(500).send({
+          error: process.env.NODE_ENV === "production" ? "Internal server error" : error.message,
+        });
       }
     }
   );
@@ -188,7 +190,9 @@ const groupTasksRoutes: FastifyPluginAsync = async (fastify) => {
         };
       } catch (error: any) {
         fastify.log.error({ err: error }, "Error fetching group task");
-        return reply.status(500).send({ error: error.message });
+        return reply.status(500).send({
+          error: process.env.NODE_ENV === "production" ? "Internal server error" : error.message,
+        });
       }
     }
   );
@@ -302,7 +306,9 @@ const groupTasksRoutes: FastifyPluginAsync = async (fastify) => {
         });
       } catch (error: any) {
         fastify.log.error({ err: error }, "Error creating group task");
-        return reply.status(500).send({ error: error.message });
+        return reply.status(500).send({
+          error: process.env.NODE_ENV === "production" ? "Internal server error" : error.message,
+        });
       }
     }
   );
@@ -433,7 +439,9 @@ const groupTasksRoutes: FastifyPluginAsync = async (fastify) => {
         return { data: updatedTask };
       } catch (error: any) {
         fastify.log.error({ err: error }, "Error updating group task");
-        return reply.status(500).send({ error: error.message });
+        return reply.status(500).send({
+          error: process.env.NODE_ENV === "production" ? "Internal server error" : error.message,
+        });
       }
     }
   );
@@ -493,7 +501,9 @@ const groupTasksRoutes: FastifyPluginAsync = async (fastify) => {
         return { message: "Group task deleted successfully" };
       } catch (error: any) {
         fastify.log.error({ err: error }, "Error deleting group task");
-        return reply.status(500).send({ error: error.message });
+        return reply.status(500).send({
+          error: process.env.NODE_ENV === "production" ? "Internal server error" : error.message,
+        });
       }
     }
   );

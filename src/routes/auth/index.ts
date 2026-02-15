@@ -118,7 +118,9 @@ const auth: FastifyPluginAsync = async (fastify) => {
         });
       } catch (error: any) {
         fastify.log.error({ err: error }, "Error registering user");
-        return reply.status(500).send({ error: error.message || "Internal server error" });
+        return reply.status(500).send({
+          error: process.env.NODE_ENV === "production" ? "Internal server error" : (error.message || "Internal server error"),
+        });
       }
     }
   );
@@ -170,7 +172,9 @@ const auth: FastifyPluginAsync = async (fastify) => {
         });
       } catch (error: any) {
         fastify.log.error({ err: error }, "Error logging in");
-        return reply.status(500).send({ error: error.message || "Internal server error" });
+        return reply.status(500).send({
+          error: process.env.NODE_ENV === "production" ? "Internal server error" : (error.message || "Internal server error"),
+        });
       }
     }
   );
@@ -221,7 +225,9 @@ const auth: FastifyPluginAsync = async (fastify) => {
           });
         }
         fastify.log.error({ err: error }, "Error getting user");
-        return reply.status(500).send({ error: error.message || "Internal server error" });
+        return reply.status(500).send({
+          error: process.env.NODE_ENV === "production" ? "Internal server error" : (error.message || "Internal server error"),
+        });
       }
     }
   );

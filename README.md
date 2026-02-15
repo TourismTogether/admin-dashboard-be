@@ -52,6 +52,17 @@ SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-app-password
 SMTP_FROM=your-email@gmail.com
+
+# Auth (required in production)
+ACCESS_TOKEN_SECRET=your-long-random-secret-at-least-32-chars
+ACCESS_TOKEN_EXPIRATION=7d
+
+# Production: allow frontend origin(s), comma-separated
+# CORS_ALLOWED_ORIGINS=https://your-app.onrender.com,https://www.example.com
+
+# Rate limit (optional): max requests per IP per time window
+# RATE_LIMIT_MAX=100
+# RATE_LIMIT_WINDOW_MS=60000
 ```
 
 **Note:** For admin operations, it's recommended to use `SUPABASE_SERVICE_ROLE_KEY` which bypasses Row Level Security (RLS). For client-side operations, use `SUPABASE_ANON_KEY`.
