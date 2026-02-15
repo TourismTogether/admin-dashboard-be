@@ -69,9 +69,8 @@ const app: FastifyPluginAsync<AppOptions> = async (
     [...defaultOrigins, ...envOrigins].map((origin) => origin.toLowerCase())
   );
 
-  // Handle preflight OPTIONS immediately with 204 so CORS never gets non-2xx
-  fastify.addHook("onRequest", async (request, reply) => {
-    if (request.method !== "OPTIONS") return;
+  // Preflight OPTIONS: reply 204 with CORS (avoids addHook for Vercel serverless compatibility)
+  fastify.options("/*", async (request, reply) => {
     const origin = request.headers.origin;
     if (origin && allowedOrigins.has(origin.toLowerCase())) {
       reply.header("Access-Control-Allow-Origin", origin);
