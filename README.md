@@ -60,7 +60,8 @@ ACCESS_TOKEN_SECRET=your-long-random-secret-at-least-32-chars
 ACCESS_TOKEN_EXPIRATION=7d
 
 # Production: allow frontend origin(s), comma-separated
-# CORS_ALLOWED_ORIGINS=https://your-app.onrender.com,https://www.example.com
+# Example (Vercel frontend):
+# CORS_ALLOWED_ORIGINS=https://admin-dashboard-fe-six.vercel.app
 
 # Rate limit (optional): max requests per IP per time window
 # RATE_LIMIT_MAX=100
@@ -111,8 +112,8 @@ pnpm dev
 ```
 admin-dashboard-server/
 ├── src/
-│   ├── server.ts              # Entry point
-│   ├── app.ts                 # Fastify app configuration
+│   ├── server.ts              # Local entry point (pnpm start)
+│   ├── app.ts                 # Fastify app configuration (plugin)
 │   ├── plugins/               # Fastify plugins (auto-loaded)
 │   │   ├── drizzle.ts        # Drizzle ORM plugin
 │   │   └── supabase.ts       # Supabase client plugin
@@ -160,13 +161,24 @@ admin-dashboard-server/
 │   │   └── weeklyPersonalTasksEmail.ts
 │   ├── utils/              # Utility functions
 │   │   └── email.ts
-│   └── dist/               # Compiled JavaScript (generated)
+├── api/
+│   └── index.ts             # Vercel serverless entry (single function for /api)
+├── dist/                    # Compiled JavaScript (generated)
 ├── drizzle.config.ts
 ├── package.json
 ├── pnpm-lock.yaml
 ├── tsconfig.json
 └── README.md
 ```
+
+## Deploying to Vercel (backend)
+
+- **Build command**: `pnpm run build` (outputs compiled code to `dist/`).
+- **Serverless entry**: `api/index.ts` (compiled to `dist/api/index.js`) creates a Fastify instance, registers `src/app.ts`, và forward `(req, res)` vào Fastify.
+- **Routing**: `vercel.json` có rewrite `/(.*) -> /api` nên mọi request (ví dụ `/api/auth/login`) đều đi qua function này và được Fastify xử lý.
+- **CORS**:
+  - Dùng `CORS_ALLOWED_ORIGINS` trong `.env` để whitelist origin frontend (ví dụ `https://admin-dashboard-fe-six.vercel.app`).
+  - `vercel.json` cũng thêm các header `Access-Control-*` cơ bản cho mọi response.
 
 ## Adding Routes
 
