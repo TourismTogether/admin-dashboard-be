@@ -66,6 +66,14 @@ const app: FastifyPluginAsync<AppOptions> = async (
     "https://admin-dashboard-fe-six.vercel.app/",
     "https://admin-dashboard-fe-six.vercel.app/api",
     "https://admin-dashboard-fe-six.vercel.app/api/",
+    "https://admin-dashboard-fe-six.vercel.app/api/auth",
+    "https://admin-dashboard-fe-six.vercel.app/api/auth/",
+    "https://admin-dashboard-fe-six.vercel.app/api/auth/login",
+    "https://admin-dashboard-fe-six.vercel.app/api/auth/register",
+    "https://admin-dashboard-fe-six.vercel.app/api/auth/logout",
+    "https://admin-dashboard-fe-six.vercel.app/api/auth/forgot-password",
+    "https://admin-dashboard-fe-six.vercel.app/api/auth/reset-password",
+    "https://admin-dashboard-fe-six.vercel.app/api/auth/verify-email",
   ];
   const allowedOrigins = new Set(
     [...defaultOrigins, ...envOrigins].map((origin) => origin.toLowerCase()),
