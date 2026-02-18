@@ -20,12 +20,11 @@ const logger = pino(
     : pinoPretty({
         translateTime: "HH:MM:ss Z",
         ignore: "pid,hostname",
-      })
+      }),
 );
 
 export interface AppOptions
-  extends FastifyServerOptions,
-    Partial<AutoloadPluginOptions> {}
+  extends FastifyServerOptions, Partial<AutoloadPluginOptions> {}
 
 // Pass --options via CLI arguments in command to enable these options.
 const options: AppOptions = {
@@ -43,7 +42,7 @@ const options: AppOptions = {
 
 const app: FastifyPluginAsync<AppOptions> = async (
   fastify,
-  opts
+  opts,
 ): Promise<void> => {
   // Configure CORS: use CORS_ALLOWED_ORIGINS in production (comma-separated)
   const isDevelopment = process.env.NODE_ENV !== "production";
@@ -64,9 +63,12 @@ const app: FastifyPluginAsync<AppOptions> = async (
     "http://127.0.0.1:8081",
     // Vercel frontend (add more via CORS_ALLOWED_ORIGINS if needed)
     "https://admin-dashboard-fe-six.vercel.app",
+    "https://admin-dashboard-fe-six.vercel.app/",
+    "https://admin-dashboard-fe-six.vercel.app/api",
+    "https://admin-dashboard-fe-six.vercel.app/api/",
   ];
   const allowedOrigins = new Set(
-    [...defaultOrigins, ...envOrigins].map((origin) => origin.toLowerCase())
+    [...defaultOrigins, ...envOrigins].map((origin) => origin.toLowerCase()),
   );
 
   await fastify.register(cors, {
@@ -91,7 +93,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
         ) {
           fastify.log.debug(
             { origin: normalizedOrigin },
-            "CORS: Allowed localhost origin (dev mode)"
+            "CORS: Allowed localhost origin (dev mode)",
           );
           return cb(null, origin);
         }
@@ -111,7 +113,9 @@ const app: FastifyPluginAsync<AppOptions> = async (
   await fastify.register(rateLimit, {
     max: parseInt(process.env.RATE_LIMIT_MAX || "100", 10),
     timeWindow: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000", 10), // 1 minute
-    allowList: process.env.RATE_LIMIT_ALLOW_IP ? process.env.RATE_LIMIT_ALLOW_IP.split(",").map((ip) => ip.trim()) : undefined,
+    allowList: process.env.RATE_LIMIT_ALLOW_IP
+      ? process.env.RATE_LIMIT_ALLOW_IP.split(",").map((ip) => ip.trim())
+      : undefined,
   });
 
   fastify.addHook("onSend", async (request, reply, payload) => {
@@ -140,7 +144,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
             authMethod: authError.authMethod,
           },
         },
-        "Authentication error"
+        "Authentication error",
       );
       return reply.status(authError.statusCode || 401).send({
         error: authError.code || "auth_error",
@@ -153,7 +157,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
       // Handle Fastify's validation errors (client-side)
       fastify.log.warn(
         { err: { name: error.name, message: error.message } },
-        "Request validation error"
+        "Request validation error",
       );
       reply.status(error.statusCode || 400).send({
         error: "Validation error",
@@ -171,7 +175,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
               code: (error as any).code,
             },
           },
-          "Handled 4xx error"
+          "Handled 4xx error",
         );
       } else {
         fastify.log.error(error);
