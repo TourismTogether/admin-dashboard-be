@@ -60,13 +60,11 @@ export async function verifyAccessToken(
   }
 
   try {
-    const { payload } = await jwtVerify<JwtPayload>(
-      accessToken,
-      accessTokenSecret
-    );
+    const { payload } = await jwtVerify(accessToken, accessTokenSecret);
+    const jwtPayload = payload as JwtPayload;
 
-    const userId = payload.userId;
-    const email = payload.email;
+    const userId = jwtPayload.userId;
+    const email = jwtPayload.email;
 
     if (!userId || !email) {
       throw new AuthenticationError(
