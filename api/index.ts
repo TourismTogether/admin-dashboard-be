@@ -1,10 +1,11 @@
 /**
- * Vercel serverless entry: creates Fastify instance, registers app plugin,
- * exports handler that forwards (req, res) to Fastify. Do not use listen() here.
+ * Vercel Serverless Function entry.
+ * Vercel runs files in /api as functions; this handler creates Fastify,
+ * registers the app plugin, and forwards (req, res) to Fastify.
  */
 import "dotenv/config";
 import Fastify from "fastify";
-import app, { options } from "./app";
+import app, { options } from "../src/app";
 
 const server = Fastify(options);
 server.register(app);
