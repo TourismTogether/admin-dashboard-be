@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from "fastify";
 import { eq, and, inArray, desc } from "drizzle-orm";
-import { tableWeeks, tableSwimlanes, personalTasks } from "../../db/schema";
+import { randomUUID } from "crypto";
+import { tableWeeks, tableSwimlanes, personalTasks, shareTable } from "../../db/schema";
 import { verifyAccessToken, AuthenticatedRequest } from "../auth/auth";
 import {
   getTablesRouteSchema,
@@ -623,6 +624,143 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
         return { data: recentTasks };
       } catch (error: any) {
         fastify.log.error({ err: error }, "Error fetching recent tasks");
+        return reply.status(500).send({ error: error.message });
+      }
+    }
+  );
+
+  // --- Share table (owner only) ---
+  // Get share status for a table
+  fastify.get(
+    "/api/personal-tasks/tables/:tableId/share",
+    { preHandler: [verifyAccessToken] },
+    async (request, reply) => {
+      try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) return reply.status(401).send({ error: "Unauthorized" });
+        const userId = authRequest.user.userId;
+        const { tableId } = request.params as { tableId: string };
+
+        const [table] = await fastify.drizzle
+          .select()
+          .from(tableWeeks)
+          .where(and(eq(tableWeeks.tableId, tableId), eq(tableWeeks.userId, userId)))
+          .limit(1);
+        if (!table) return reply.status(404).send({ error: "Table not found" });
+
+        const [share] = await fastify.drizzle
+          .select()
+          .from(shareTable)
+          .where(eq(shareTable.tableId, tableId))
+          .limit(1);
+        if (!share) return reply.status(404).send({ error: "Share not found" });
+
+        const baseUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+        return {
+          data: {
+            shareId: share.shareId,
+            isPublic: share.isPublic,
+            shareUrl: `${baseUrl}/share/table/${share.shareId}`,
+          },
+        };
+      } catch (error: any) {
+        fastify.log.error({ err: error }, "Error fetching share");
+        return reply.status(500).send({ error: error.message });
+      }
+    }
+  );
+
+  // Create or enable share (owner only)
+  fastify.post(
+    "/api/personal-tasks/tables/:tableId/share",
+    { preHandler: [verifyAccessToken] },
+    async (request, reply) => {
+      try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) return reply.status(401).send({ error: "Unauthorized" });
+        const userId = authRequest.user.userId;
+        const { tableId } = request.params as { tableId: string };
+
+        const [table] = await fastify.drizzle
+          .select()
+          .from(tableWeeks)
+          .where(and(eq(tableWeeks.tableId, tableId), eq(tableWeeks.userId, userId)))
+          .limit(1);
+        if (!table) return reply.status(404).send({ error: "Table not found" });
+
+        const [existing] = await fastify.drizzle
+          .select()
+          .from(shareTable)
+          .where(eq(shareTable.tableId, tableId))
+          .limit(1);
+        if (existing) {
+          await fastify.drizzle
+            .update(shareTable)
+            .set({ isPublic: true, updatedAt: new Date() })
+            .where(eq(shareTable.tableId, tableId));
+          const baseUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+          return {
+            data: {
+              shareId: existing.shareId,
+              isPublic: true,
+              shareUrl: `${baseUrl}/share/table/${existing.shareId}`,
+            },
+          };
+        }
+
+        const shareId = randomUUID();
+        await fastify.drizzle.insert(shareTable).values({
+          tableId,
+          ownerId: userId,
+          shareId,
+          isPublic: true,
+        });
+        const baseUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+        return {
+          data: {
+            shareId,
+            isPublic: true,
+            shareUrl: `${baseUrl}/share/table/${shareId}`,
+          },
+        };
+      } catch (error: any) {
+        fastify.log.error({ err: error }, "Error creating share");
+        return reply.status(500).send({ error: error.message });
+      }
+    }
+  );
+
+  // Make private (delete share record) (owner only)
+  fastify.delete(
+    "/api/personal-tasks/tables/:tableId/share",
+    { preHandler: [verifyAccessToken] },
+    async (request, reply) => {
+      try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) return reply.status(401).send({ error: "Unauthorized" });
+        const userId = authRequest.user.userId;
+        const { tableId } = request.params as { tableId: string };
+
+        const [table] = await fastify.drizzle
+          .select()
+          .from(tableWeeks)
+          .where(and(eq(tableWeeks.tableId, tableId), eq(tableWeeks.userId, userId)))
+          .limit(1);
+        if (!table) return reply.status(404).send({ error: "Table not found" });
+
+        await fastify.drizzle.delete(shareTable).where(eq(shareTable.tableId, tableId));
+        return { message: "Share disabled" };
+      } catch (error: any) {
+        fastify.log.error({ err: error }, "Error deleting share");
         return reply.status(500).send({ error: error.message });
       }
     }

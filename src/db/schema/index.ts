@@ -14,3 +14,4 @@ export * from "./userSettings";
 export * from "./brainstorm";
 export * from "./userAdmin";
 export * from "./feedback";
+export * from "./shareTable";

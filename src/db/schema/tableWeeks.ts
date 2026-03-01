@@ -9,6 +9,8 @@ export const tableWeeks = pgTable("table_weeks", {
   week: integer("week").notNull(),
   startDate: date("start_date").notNull(),
   description: text("description"),
+  /** When set, this table is a copy/follow-up of the referenced table (e.g. forked from a shared table). FK added in migration. */
+  followUpTableId: uuid("follow_up_table_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

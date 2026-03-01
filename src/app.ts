@@ -199,13 +199,21 @@ const app: FastifyPluginAsync<AppOptions> = async (
     }
   });
 
-  // Allow DELETE requests without body even if Content-Type is set
-  fastify.addHook("onRequest", async (request, reply) => {
-    if (
+  // Avoid body/content-type validation for methods without body or when content-type is missing/invalid
+  fastify.addHook("onRequest", async (request) => {
+    const contentType = request.headers["content-type"];
+    const noBodyMethod =
+      request.method === "GET" ||
+      request.method === "HEAD" ||
+      request.method === "OPTIONS";
+    const invalidContentType =
+      contentType === undefined ||
+      contentType === null ||
+      String(contentType).toLowerCase() === "undefined";
+    const deleteForDelete =
       request.method === "DELETE" &&
-      request.headers["content-type"]?.includes("application/json")
-    ) {
-      // Remove content-type header for DELETE requests to avoid body validation
+      (invalidContentType || contentType?.includes("application/json"));
+    if (noBodyMethod || invalidContentType || deleteForDelete) {
       delete request.headers["content-type"];
     }
   });
@@ -245,6 +253,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
   const settingsRoutes = await import("./routes/settings/index");
   const brainstormRoutes = await import("./routes/brainstorm/index");
   const feedbackRoutes = await import("./routes/feedback/index");
+  const shareRoutes = await import("./routes/share/index");
 
   await fastify.register(authRoutes.default);
   await fastify.register(personalTasksRoutes.default);
@@ -254,6 +263,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
   await fastify.register(settingsRoutes.default);
   await fastify.register(brainstormRoutes.default);
   await fastify.register(feedbackRoutes.default);
+  await fastify.register(shareRoutes.default);
 };
 
 export default app;
