@@ -319,12 +319,25 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           return reply.status(500).send({ error: "Database not available" });
         }
 
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) return reply.status(401).send({ error: "Unauthorized" });
+        const userId = authRequest.user.userId;
+
         const body = request.body as {
           tableId: string;
           content: string;
           startTime?: string;
           duration?: number;
         };
+
+        const [table] = await fastify.drizzle
+          .select()
+          .from(tableWeeks)
+          .where(and(eq(tableWeeks.tableId, body.tableId), eq(tableWeeks.userId, userId)))
+          .limit(1);
+        if (!table) {
+          return reply.status(403).send({ error: "You can only add swimlanes to your own tables" });
+        }
 
         const [newSwimlane] = await fastify.drizzle
           .insert(tableSwimlanes)
@@ -357,12 +370,34 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           return reply.status(500).send({ error: "Database not available" });
         }
 
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) return reply.status(401).send({ error: "Unauthorized" });
+        const userId = authRequest.user.userId;
+
         const { swimlaneId } = request.params as { swimlaneId: string };
         const body = request.body as {
           content?: string;
           startTime?: string;
           duration?: number;
         };
+
+        const [swimlane] = await fastify.drizzle
+          .select({ tableId: tableSwimlanes.tableId })
+          .from(tableSwimlanes)
+          .where(eq(tableSwimlanes.swimlaneId, swimlaneId))
+          .limit(1);
+        if (!swimlane) {
+          return reply.status(404).send({ error: "Swimlane not found" });
+        }
+
+        const [table] = await fastify.drizzle
+          .select()
+          .from(tableWeeks)
+          .where(and(eq(tableWeeks.tableId, swimlane.tableId), eq(tableWeeks.userId, userId)))
+          .limit(1);
+        if (!table) {
+          return reply.status(403).send({ error: "You can only edit your own tables" });
+        }
 
         const [updatedSwimlane] = await fastify.drizzle
           .update(tableSwimlanes)
@@ -398,7 +433,29 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           return reply.status(500).send({ error: "Database not available" });
         }
 
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) return reply.status(401).send({ error: "Unauthorized" });
+        const userId = authRequest.user.userId;
+
         const { swimlaneId } = request.params as { swimlaneId: string };
+
+        const [swimlane] = await fastify.drizzle
+          .select({ tableId: tableSwimlanes.tableId })
+          .from(tableSwimlanes)
+          .where(eq(tableSwimlanes.swimlaneId, swimlaneId))
+          .limit(1);
+        if (!swimlane) {
+          return reply.status(404).send({ error: "Swimlane not found" });
+        }
+
+        const [table] = await fastify.drizzle
+          .select()
+          .from(tableWeeks)
+          .where(and(eq(tableWeeks.tableId, swimlane.tableId), eq(tableWeeks.userId, userId)))
+          .limit(1);
+        if (!table) {
+          return reply.status(403).send({ error: "You can only delete swimlanes in your own tables" });
+        }
 
         await fastify.drizzle
           .delete(tableSwimlanes)
@@ -425,6 +482,10 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           return reply.status(500).send({ error: "Database not available" });
         }
 
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) return reply.status(401).send({ error: "Unauthorized" });
+        const userId = authRequest.user.userId;
+
         const body = request.body as {
           swimlaneId: string;
           content: string;
@@ -438,6 +499,24 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           }>;
           taskDate: string; // YYYY-MM-DD format
         };
+
+        const [swimlane] = await fastify.drizzle
+          .select({ tableId: tableSwimlanes.tableId })
+          .from(tableSwimlanes)
+          .where(eq(tableSwimlanes.swimlaneId, body.swimlaneId))
+          .limit(1);
+        if (!swimlane) {
+          return reply.status(404).send({ error: "Swimlane not found" });
+        }
+
+        const [table] = await fastify.drizzle
+          .select()
+          .from(tableWeeks)
+          .where(and(eq(tableWeeks.tableId, swimlane.tableId), eq(tableWeeks.userId, userId)))
+          .limit(1);
+        if (!table) {
+          return reply.status(403).send({ error: "You can only create tasks in your own tables" });
+        }
 
         // Handle checklist: if null, set to null; if array with items, set array; if empty array, set to null
         let checklistValue = null;
@@ -483,6 +562,10 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           return reply.status(500).send({ error: "Database not available" });
         }
 
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) return reply.status(401).send({ error: "Unauthorized" });
+        const userId = authRequest.user.userId;
+
         const { taskId } = request.params as { taskId: string };
         const body = request.body as {
           content?: string;
@@ -497,6 +580,52 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           taskDate?: string;
           swimlaneId?: string;
         };
+
+        const [existingTask] = await fastify.drizzle
+          .select({ swimlaneId: personalTasks.swimlaneId })
+          .from(personalTasks)
+          .where(eq(personalTasks.taskId, taskId))
+          .limit(1);
+        if (!existingTask) {
+          return reply.status(404).send({ error: "Task not found" });
+        }
+
+        const [swimlane] = await fastify.drizzle
+          .select({ tableId: tableSwimlanes.tableId })
+          .from(tableSwimlanes)
+          .where(eq(tableSwimlanes.swimlaneId, existingTask.swimlaneId))
+          .limit(1);
+        if (!swimlane) {
+          return reply.status(404).send({ error: "Swimlane not found" });
+        }
+
+        const [table] = await fastify.drizzle
+          .select()
+          .from(tableWeeks)
+          .where(and(eq(tableWeeks.tableId, swimlane.tableId), eq(tableWeeks.userId, userId)))
+          .limit(1);
+        if (!table) {
+          return reply.status(403).send({ error: "You can only update tasks in your own tables" });
+        }
+
+        if (body.swimlaneId !== undefined && body.swimlaneId !== existingTask.swimlaneId) {
+          const [newSwimlane] = await fastify.drizzle
+            .select({ tableId: tableSwimlanes.tableId })
+            .from(tableSwimlanes)
+            .where(eq(tableSwimlanes.swimlaneId, body.swimlaneId))
+            .limit(1);
+          if (!newSwimlane) {
+            return reply.status(404).send({ error: "Target swimlane not found" });
+          }
+          const [newTable] = await fastify.drizzle
+            .select()
+            .from(tableWeeks)
+            .where(and(eq(tableWeeks.tableId, newSwimlane.tableId), eq(tableWeeks.userId, userId)))
+            .limit(1);
+          if (!newTable) {
+            return reply.status(403).send({ error: "You can only move tasks within your own tables" });
+          }
+        }
 
         const updateData: any = {
           updatedAt: new Date(),
@@ -556,7 +685,38 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           return reply.status(500).send({ error: "Database not available" });
         }
 
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) return reply.status(401).send({ error: "Unauthorized" });
+        const userId = authRequest.user.userId;
+
         const { taskId } = request.params as { taskId: string };
+
+        const [existingTask] = await fastify.drizzle
+          .select({ swimlaneId: personalTasks.swimlaneId })
+          .from(personalTasks)
+          .where(eq(personalTasks.taskId, taskId))
+          .limit(1);
+        if (!existingTask) {
+          return reply.status(404).send({ error: "Task not found" });
+        }
+
+        const [swimlane] = await fastify.drizzle
+          .select({ tableId: tableSwimlanes.tableId })
+          .from(tableSwimlanes)
+          .where(eq(tableSwimlanes.swimlaneId, existingTask.swimlaneId))
+          .limit(1);
+        if (!swimlane) {
+          return reply.status(404).send({ error: "Swimlane not found" });
+        }
+
+        const [table] = await fastify.drizzle
+          .select()
+          .from(tableWeeks)
+          .where(and(eq(tableWeeks.tableId, swimlane.tableId), eq(tableWeeks.userId, userId)))
+          .limit(1);
+        if (!table) {
+          return reply.status(403).send({ error: "You can only delete tasks in your own tables" });
+        }
 
         await fastify.drizzle
           .delete(personalTasks)
