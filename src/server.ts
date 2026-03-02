@@ -18,7 +18,9 @@ const start = async () => {
       port,
       host,
     });
+    const url = host === "0.0.0.0" ? `http://localhost:${port}` : `http://${host}:${port}`;
     server.log.info(`Server listening on ${host}:${port}`);
+    console.log(`Server started at ${url} (host: ${host}, port: ${port})`);
   } catch (err) {
     server.log.error(err);
     process.exit(1);

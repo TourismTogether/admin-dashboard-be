@@ -4,8 +4,11 @@ const testSupabase: FastifyPluginAsync = async (fastify) => {
   // Test Supabase connection
   fastify.get("/test/supabase", async (request, reply) => {
     try {
+      // Access Supabase client in a type-safe way for Fastify
+      const supabase = (fastify as any).supabase;
+
       // Check if Supabase client is available
-      if (!fastify.supabase) {
+      if (!supabase) {
         return reply.status(500).send({
           success: false,
           error: "Supabase client is not initialized",
@@ -17,13 +20,13 @@ const testSupabase: FastifyPluginAsync = async (fastify) => {
       // Test connection by making a simple query to check if we can reach Supabase
       // We'll use a query that works even if tables don't exist
       // Try to get schema information or just verify the connection works
-      const { data, error } = await fastify.supabase.rpc("version").single();
+      const { data, error } = await supabase.rpc("version").single();
 
       // If RPC doesn't work, try a simple select that will fail gracefully
       if (error) {
         // Try a different approach - just check if we can make a request
         // Query a non-existent table to test connection (will fail but show connection works)
-        const testQuery = await fastify.supabase
+        const testQuery = await supabase
           .from("__connection_test__")
           .select("*")
           .limit(1);
