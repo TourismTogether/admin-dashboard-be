@@ -300,6 +300,9 @@ const portfolioRoutes: FastifyPluginAsync = async (fastify) => {
           return reply.status(500).send({ error: "Database not available" });
         }
 
+        const query = request.query as { period?: "current" | "previous" };
+        const selectedPeriod = query.period === "previous" ? "previous" : "current";
+
         const usersWithPortfolio = await fastify.drizzle
           .select({
             userId: users.userId,
@@ -319,6 +322,9 @@ const portfolioRoutes: FastifyPluginAsync = async (fastify) => {
         const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
         const weekStart = new Date(weekAnchor);
         weekStart.setDate(weekStart.getDate() + diffToMonday);
+        if (selectedPeriod === "previous") {
+          weekStart.setDate(weekStart.getDate() - 7);
+        }
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 6);
         const weekStartStr = weekStart.toISOString().split("T")[0];
