@@ -132,6 +132,13 @@ export const deletePortfolioRouteSchema: FastifySchema = {
 
 // Leaderboard schema
 export const getLeaderboardRouteSchema: FastifySchema = {
+  querystring: {
+    type: "object",
+    properties: {
+      period: { type: "string", enum: ["current", "previous"] },
+    },
+    additionalProperties: false,
+  },
   response: {
     200: {
       type: "object",
