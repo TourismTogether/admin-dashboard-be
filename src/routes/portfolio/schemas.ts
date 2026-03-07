@@ -129,3 +129,57 @@ export const deletePortfolioRouteSchema: FastifySchema = {
     },
   },
 };
+
+// Leaderboard schema
+export const getLeaderboardRouteSchema: FastifySchema = {
+  response: {
+    200: {
+      type: "object",
+      properties: {
+        data: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              userId: { type: "string", format: "uuid" },
+              displayName: { type: "string" },
+              email: { type: "string" },
+              avatarUrl: { type: ["string", "null"] },
+              commits: { type: "number" },
+              commitsLast30Days: { type: "number" },
+              highPriorityCommits: { type: "number" },
+              streakDays: { type: "number" },
+              score: { type: "number" },
+              rank: { type: "number" },
+            },
+            required: [
+              "userId",
+              "displayName",
+              "email",
+              "avatarUrl",
+              "commits",
+              "commitsLast30Days",
+              "highPriorityCommits",
+              "streakDays",
+              "score",
+              "rank",
+            ],
+          },
+        },
+      },
+      required: ["data"],
+    },
+    401: {
+      type: "object",
+      properties: {
+        error: { type: "string" },
+      },
+    },
+    500: {
+      type: "object",
+      properties: {
+        error: { type: "string" },
+      },
+    },
+  },
+};
