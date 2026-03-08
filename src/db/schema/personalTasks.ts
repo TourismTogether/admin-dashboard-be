@@ -9,6 +9,7 @@ export const personalTasks = pgTable("personal_tasks", {
   content: text("content").notNull(),
   status: varchar("status", { length: 50 }).notNull().default("todo"), // todo, in_progress, reopen, done, delay
   priority: varchar("priority", { length: 50 }).notNull().default("medium"), // low, medium, high
+  difficulty: varchar("difficulty", { length: 20 }).notNull().default("medium"), // easy, medium, hard
   detail: text("detail"),
   checklist: jsonb("checklist").$type<Array<{ id: string; description: string; isComplete: boolean }>>(), // Array of {id, description, isComplete}
   taskDate: date("task_date").notNull(), // The date this task belongs to in the week

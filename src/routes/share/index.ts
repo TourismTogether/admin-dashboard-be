@@ -39,7 +39,10 @@ const shareRoutes: FastifyPluginAsync = async (fastify) => {
           .orderBy(tableSwimlanes.createdAt);
 
         const swimlaneIds = swimlanes.map((s) => s.swimlaneId);
-        const tasks =
+        const normalizeDifficulty = (v: string | null | undefined): "easy" | "medium" | "hard" =>
+          v && ["easy", "medium", "hard"].includes(v) ? (v as "easy" | "medium" | "hard") : "medium";
+
+        const tasksRaw =
           swimlaneIds.length > 0
             ? await fastify.drizzle
                 .select({
@@ -48,6 +51,7 @@ const shareRoutes: FastifyPluginAsync = async (fastify) => {
                   content: personalTasks.content,
                   status: personalTasks.status,
                   priority: personalTasks.priority,
+                  difficulty: personalTasks.difficulty,
                   detail: personalTasks.detail,
                   checklist: personalTasks.checklist,
                   taskDate: personalTasks.taskDate,
@@ -57,6 +61,7 @@ const shareRoutes: FastifyPluginAsync = async (fastify) => {
                 .from(personalTasks)
                 .where(inArray(personalTasks.swimlaneId, swimlaneIds))
             : [];
+        const tasks = tasksRaw.map((t) => ({ ...t, difficulty: normalizeDifficulty(t.difficulty) }));
 
         let isOwner = false;
         const authHeader = request.headers.authorization;
@@ -169,6 +174,9 @@ const shareRoutes: FastifyPluginAsync = async (fastify) => {
             .from(personalTasks)
             .where(inArray(personalTasks.swimlaneId, swimlanes.map((s) => s.swimlaneId)));
 
+          const validDifficulty = (v: string | null | undefined): "easy" | "medium" | "hard" =>
+            v && ["easy", "medium", "hard"].includes(v) ? (v as "easy" | "medium" | "hard") : "medium";
+
           for (const task of tasksToCopy) {
             const newSwimlaneId = oldToNewSwimlaneId.get(task.swimlaneId);
             if (!newSwimlaneId) continue;
@@ -177,6 +185,7 @@ const shareRoutes: FastifyPluginAsync = async (fastify) => {
               content: task.content,
               status: task.status,
               priority: task.priority,
+              difficulty: validDifficulty(task.difficulty),
               detail: task.detail,
               checklist: task.checklist,
               taskDate: task.taskDate,

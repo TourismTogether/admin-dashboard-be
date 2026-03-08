@@ -97,6 +97,10 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
 
         // Get tasks for all swimlanes
         const swimlaneIds = swimlanes.map((s) => s.swimlaneId);
+        const VALID_DIFFICULTY = ["easy", "medium", "hard"] as const;
+        const normalizeDifficulty = (v: string | null | undefined): "easy" | "medium" | "hard" =>
+          (v && VALID_DIFFICULTY.includes(v as any)) ? (v as "easy" | "medium" | "hard") : "medium";
+
         const tasks =
           swimlaneIds.length > 0
             ? await fastify.drizzle
@@ -106,6 +110,7 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
                   content: personalTasks.content,
                   status: personalTasks.status,
                   priority: personalTasks.priority,
+                  difficulty: personalTasks.difficulty,
                   detail: personalTasks.detail,
                   checklist: personalTasks.checklist,
                   taskDate: personalTasks.taskDate,
@@ -121,9 +126,9 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
             ...table,
             swimlanes: swimlanes.map((swimlane) => ({
               ...swimlane,
-              tasks: tasks.filter(
-                (task) => task.swimlaneId === swimlane.swimlaneId
-              ),
+              tasks: tasks
+                .map((t) => ({ ...t, difficulty: normalizeDifficulty(t.difficulty) }))
+                .filter((task) => task.swimlaneId === swimlane.swimlaneId),
             })),
           },
         };
@@ -491,6 +496,7 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           content: string;
           status?: string;
           priority?: string;
+          difficulty?: string;
           detail?: string;
           checklist?: Array<{
             id: string;
@@ -499,6 +505,12 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           }>;
           taskDate: string; // YYYY-MM-DD format
         };
+
+        const validDifficulty = (v: string): v is "easy" | "medium" | "hard" =>
+          ["easy", "medium", "hard"].includes(v);
+        const difficulty = body.difficulty != null && validDifficulty(body.difficulty)
+          ? body.difficulty
+          : "medium";
 
         const [swimlane] = await fastify.drizzle
           .select({ tableId: tableSwimlanes.tableId })
@@ -535,6 +547,7 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
             content: body.content,
             status: body.status || "todo",
             priority: body.priority || "medium",
+            difficulty,
             detail: body.detail || null,
             checklist: checklistValue,
             taskDate: body.taskDate,
@@ -571,6 +584,7 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           content?: string;
           status?: string;
           priority?: string;
+          difficulty?: string;
           detail?: string;
           checklist?: Array<{
             id: string;
@@ -580,6 +594,9 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           taskDate?: string;
           swimlaneId?: string;
         };
+
+        const validDifficulty = (v: string): v is "easy" | "medium" | "hard" =>
+          ["easy", "medium", "hard"].includes(v);
 
         const [existingTask] = await fastify.drizzle
           .select({ swimlaneId: personalTasks.swimlaneId })
@@ -635,6 +652,8 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
         if (body.content !== undefined) updateData.content = body.content;
         if (body.status !== undefined) updateData.status = body.status;
         if (body.priority !== undefined) updateData.priority = body.priority;
+        if (body.difficulty !== undefined)
+          updateData.difficulty = validDifficulty(body.difficulty) ? body.difficulty : "medium";
         if (body.detail !== undefined) updateData.detail = body.detail || null;
         if (body.taskDate !== undefined) updateData.taskDate = body.taskDate;
         if (body.swimlaneId !== undefined)
@@ -762,14 +781,19 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           return { data: [] };
         }
 
+        const VALID_DIFFICULTY = ["easy", "medium", "hard"] as const;
+        const normalizeDifficulty = (v: string | null | undefined): "easy" | "medium" | "hard" =>
+          (v && VALID_DIFFICULTY.includes(v as any)) ? (v as "easy" | "medium" | "hard") : "medium";
+
         // Get 10 most recent tasks ordered by updatedAt
-        const recentTasks = await fastify.drizzle
+        const recentRows = await fastify.drizzle
           .select({
             taskId: personalTasks.taskId,
             swimlaneId: personalTasks.swimlaneId,
             content: personalTasks.content,
             status: personalTasks.status,
             priority: personalTasks.priority,
+            difficulty: personalTasks.difficulty,
             detail: personalTasks.detail,
             checklist: personalTasks.checklist,
             taskDate: personalTasks.taskDate,
@@ -781,6 +805,7 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
           .orderBy(desc(personalTasks.updatedAt))
           .limit(10);
 
+        const recentTasks = recentRows.map((r) => ({ ...r, difficulty: normalizeDifficulty(r.difficulty) }));
         return { data: recentTasks };
       } catch (error: any) {
         fastify.log.error({ err: error }, "Error fetching recent tasks");

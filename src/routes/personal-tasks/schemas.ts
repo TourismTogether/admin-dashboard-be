@@ -77,6 +77,7 @@ export const getTableRouteSchema: FastifySchema = {
                         content: { type: "string" },
                         status: { type: "string" },
                         priority: { type: "string" },
+                        difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
                         detail: { type: "string", nullable: true },
                         checklist: {
                           type: "array",
@@ -358,6 +359,7 @@ export const createTaskRouteSchema: FastifySchema = {
       content: { type: "string" },
       status: { type: "string", enum: ["todo", "in_progress", "reopen", "done", "delay"] },
       priority: { type: "string", enum: ["low", "medium", "high"] },
+      difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
       detail: { type: "string" },
       checklist: {
         anyOf: [
@@ -391,6 +393,7 @@ export const createTaskRouteSchema: FastifySchema = {
             content: { type: "string" },
             status: { type: "string" },
             priority: { type: "string" },
+            difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
             detail: { type: "string", nullable: true },
             checklist: {
               type: "array",
@@ -432,6 +435,7 @@ export const updateTaskRouteSchema: FastifySchema = {
       content: { type: "string" },
       status: { type: "string", enum: ["todo", "in_progress", "reopen", "done", "delay"] },
       priority: { type: "string", enum: ["low", "medium", "high"] },
+      difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
       detail: { type: "string" },
       checklist: {
         anyOf: [
@@ -466,6 +470,7 @@ export const updateTaskRouteSchema: FastifySchema = {
             content: { type: "string" },
             status: { type: "string" },
             priority: { type: "string" },
+            difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
             detail: { type: "string", nullable: true },
             checklist: {
               type: "array",
@@ -537,6 +542,7 @@ export const getRecentTasksRouteSchema: FastifySchema = {
               content: { type: "string" },
               status: { type: "string" },
               priority: { type: "string" },
+              difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
               detail: { type: "string", nullable: true },
               checklist: {
                 type: "array",
