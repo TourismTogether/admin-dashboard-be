@@ -20,6 +20,10 @@ import {
 // Email feature temporarily disabled (incomplete / has bugs)
 // import { sendWeeklyEmailForUser } from "../../jobs/weeklyPersonalTasksEmail";
 
+function isValidTaskUuid(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
 const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
   // Get all tables for a user
   fastify.get(
@@ -580,6 +584,9 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
         const userId = authRequest.user.userId;
 
         const { taskId } = request.params as { taskId: string };
+        if (!isValidTaskUuid(taskId)) {
+          return reply.status(400).send({ error: "Invalid task id" });
+        }
         const body = request.body as {
           content?: string;
           status?: string;
@@ -709,6 +716,9 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
         const userId = authRequest.user.userId;
 
         const { taskId } = request.params as { taskId: string };
+        if (!isValidTaskUuid(taskId)) {
+          return reply.status(400).send({ error: "Invalid task id" });
+        }
 
         const [existingTask] = await fastify.drizzle
           .select({ swimlaneId: personalTasks.swimlaneId })
