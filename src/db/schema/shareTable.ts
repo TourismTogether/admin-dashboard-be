@@ -10,7 +10,7 @@ export const shareTable = pgTable("share_table", {
   ownerId: uuid("owner_id")
     .notNull()
     .references(() => users.userId, { onDelete: "cascade" }),
-  shareId: varchar("share_id", { length: 64 }).notNull().unique(),
+  shareId: varchar("share_id", { length: 64 }).notNull().unique("share_table_share_id_key"),
   isPublic: boolean("is_public").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
