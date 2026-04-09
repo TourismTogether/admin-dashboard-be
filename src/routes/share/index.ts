@@ -68,7 +68,7 @@ const shareRoutes: FastifyPluginAsync = async (fastify) => {
         if (authHeader?.startsWith("Bearer ")) {
           try {
             const { jwtVerify } = await import("jose");
-            const { accessTokenSecret } = await import("../auth/auth");
+            const { accessTokenSecret } = await import("../auth/auth.js");
             const token = authHeader.slice(7);
             const { payload } = await jwtVerify(token, accessTokenSecret);
             const userId = (payload as { userId?: string }).userId;
