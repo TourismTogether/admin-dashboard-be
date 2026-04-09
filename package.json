@@ -34,7 +34,8 @@
     "nodemailer": "^7.0.12",
     "pg": "^8.13.0",
     "pino": "^9.5.0",
-    "pino-pretty": "^11.3.0"
+    "pino-pretty": "^11.3.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
