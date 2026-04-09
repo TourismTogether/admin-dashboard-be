@@ -16,3 +16,4 @@ export * from "./userAdmin";
 export * from "./feedback";
 export * from "./shareTable";
 export * from "./meetings";
+export * from "./events";
