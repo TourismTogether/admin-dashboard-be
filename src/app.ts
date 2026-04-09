@@ -245,25 +245,27 @@ const app: FastifyPluginAsync<AppOptions> = async (
   });
 
   // Manually register routes from subdirectories (ensures correct path /api/*)
-  const authRoutes = await import("./routes/auth/index");
-  const personalTasksRoutes = await import("./routes/personal-tasks/index");
-  const groupTasksRoutes = await import("./routes/group-tasks/index");
-  const groupsRoutes = await import("./routes/groups/index");
-  const portfolioRoutes = await import("./routes/portfolio/index");
-  const settingsRoutes = await import("./routes/settings/index");
-  const brainstormRoutes = await import("./routes/brainstorm/index");
-  const feedbackRoutes = await import("./routes/feedback/index");
-  const shareRoutes = await import("./routes/share/index");
+  const authRoutes = (await import("./routes/auth/index.js")).default as unknown as FastifyPluginAsync;
+  const personalTasksRoutes = (await import("./routes/personal-tasks/index.js")).default as unknown as FastifyPluginAsync;
+  const groupTasksRoutes = (await import("./routes/group-tasks/index.js")).default as unknown as FastifyPluginAsync;
+  const groupsRoutes = (await import("./routes/groups/index.js")).default as unknown as FastifyPluginAsync;
+  const meetingRoutes = (await import("./routes/meetings/index.js")).default as unknown as FastifyPluginAsync;
+  const portfolioRoutes = (await import("./routes/portfolio/index.js")).default as unknown as FastifyPluginAsync;
+  const settingsRoutes = (await import("./routes/settings/index.js")).default as unknown as FastifyPluginAsync;
+  const brainstormRoutes = (await import("./routes/brainstorm/index.js")).default as unknown as FastifyPluginAsync;
+  const feedbackRoutes = (await import("./routes/feedback/index.js")).default as unknown as FastifyPluginAsync;
+  const shareRoutes = (await import("./routes/share/index.js")).default as unknown as FastifyPluginAsync;
 
-  await fastify.register(authRoutes.default);
-  await fastify.register(personalTasksRoutes.default);
-  await fastify.register(groupsRoutes.default);
-  await fastify.register(groupTasksRoutes.default);
-  await fastify.register(portfolioRoutes.default);
-  await fastify.register(settingsRoutes.default);
-  await fastify.register(brainstormRoutes.default);
-  await fastify.register(feedbackRoutes.default);
-  await fastify.register(shareRoutes.default);
+  await fastify.register(authRoutes);
+  await fastify.register(personalTasksRoutes);
+  await fastify.register(groupsRoutes);
+  await fastify.register(groupTasksRoutes);
+  await fastify.register(portfolioRoutes);
+  await fastify.register(settingsRoutes);
+  await fastify.register(meetingRoutes);
+  await fastify.register(brainstormRoutes);
+  await fastify.register(feedbackRoutes);
+  await fastify.register(shareRoutes);
 };
 
 export default app;
