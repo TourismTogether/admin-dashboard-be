@@ -12,6 +12,7 @@ export * from "./personalTasks";
 export * from "./portfolios";
 export * from "./userSettings";
 export * from "./brainstorm";
+export * from "./takeNote";
 export * from "./userAdmin";
 export * from "./feedback";
 export * from "./shareTable";
