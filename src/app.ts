@@ -18,13 +18,13 @@ const logger = pino(
   process.env.NODE_ENV === "production"
     ? undefined
     : pinoPretty({
-        translateTime: "HH:MM:ss Z",
-        ignore: "pid,hostname",
-      }),
+      translateTime: "HH:MM:ss Z",
+      ignore: "pid,hostname",
+    }),
 );
 
 export interface AppOptions
-  extends FastifyServerOptions, Partial<AutoloadPluginOptions> {}
+  extends FastifyServerOptions, Partial<AutoloadPluginOptions> { }
 
 // Pass --options via CLI arguments in command to enable these options.
 const options: AppOptions = {
@@ -256,6 +256,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
   const feedbackRoutes = await import("./routes/feedback/index");
   const eventRoutes = await import("./routes/events/index");
   const shareRoutes = await import("./routes/share/index");
+  const postRoutes = await import("./routes/posts/index");
 
   await fastify.register(authRoutes.default);
   await fastify.register(personalTasksRoutes.default);
@@ -268,6 +269,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
   await fastify.register(feedbackRoutes.default);
   await fastify.register(eventRoutes.default);
   await fastify.register(shareRoutes.default);
+  await fastify.register(postRoutes.default);
 };
 
 export default app;
