@@ -16,9 +16,25 @@ const LATEX_API_BASE_URL =
 const LATEX_API_KEY = process.env.FORMATEX_API_KEY;
 const LATEX_ENGINE = process.env.LATEX_ENGINE || "pdflatex";
 
+class LatexCompileError extends Error {
+  code: string;
+  statusCode: number;
+
+  constructor(message: string, code: string, statusCode: number) {
+    super(message);
+    this.name = "LatexCompileError";
+    this.code = code;
+    this.statusCode = statusCode;
+  }
+}
+
 async function compileLatex(content: string) {
   if (!LATEX_API_KEY) {
-    throw new Error("Missing FORMATEX_API_KEY environment variable");
+    throw new LatexCompileError(
+      "Missing FORMATEX_API_KEY environment variable",
+      "latex_provider_not_configured",
+      500,
+    );
   }
 
   const compileRes = await fetch(
@@ -39,15 +55,35 @@ async function compileLatex(content: string) {
   if (!compileRes.ok) {
     const responseText = await compileRes.text();
     if (compileRes.status === 401) {
-      throw new Error("FormaTeX rejected FORMATEX_API_KEY");
+      throw new LatexCompileError(
+        "FormaTeX rejected FORMATEX_API_KEY",
+        "latex_provider_auth_failed",
+        502,
+      );
     }
-    throw new Error(
+    if (compileRes.status === 403) {
+      throw new LatexCompileError(
+        "Latex compilation quota has been reached",
+        "latex_quota_exceeded",
+        503,
+      );
+    }
+    if (compileRes.status === 429) {
+      throw new LatexCompileError(
+        "Latex compilation service is temporarily busy",
+        "latex_rate_limited",
+        503,
+      );
+    }
+    throw new LatexCompileError(
       [
         `LaTeX API request failed with status ${compileRes.status}`,
         responseText,
       ]
         .filter(Boolean)
         .join("\n"),
+      "latex_provider_failed",
+      502,
     );
   }
 
@@ -75,8 +111,16 @@ const latexRoutes: FastifyPluginAsync = async (fastify) => {
       } catch (error: unknown) {
         const err = error as Error;
         fastify.log.error({ err }, "Error compiling latex document");
+        if (err instanceof LatexCompileError) {
+          return reply.status(err.statusCode).send({
+            error: err.code,
+            message: err.message,
+            log: err.message,
+          });
+        }
         return reply.status(400).send({
-          error: "LaTeX compilation failed",
+          error: "latex_compilation_failed",
+          message: "LaTeX compilation failed",
           log: err.message,
         });
       }
