@@ -253,6 +253,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
   const settingsRoutes = await import("./routes/settings/index");
   const brainstormRoutes = await import("./routes/brainstorm/index");
   const takeNoteRoutes = await import("./routes/take-note/index");
+  const latexRoutes = await import("./routes/latex/index");
   const feedbackRoutes = await import("./routes/feedback/index");
   const eventRoutes = await import("./routes/events/index");
   const shareRoutes = await import("./routes/share/index");
@@ -265,6 +266,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
   await fastify.register(settingsRoutes.default);
   await fastify.register(brainstormRoutes.default);
   await fastify.register(takeNoteRoutes.default);
+  await fastify.register(latexRoutes.default);
   await fastify.register(feedbackRoutes.default);
   await fastify.register(eventRoutes.default);
   await fastify.register(shareRoutes.default);

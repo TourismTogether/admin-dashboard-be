@@ -66,6 +66,12 @@ ACCESS_TOKEN_EXPIRATION=7d
 # Rate limit (optional): max requests per IP per time window
 # RATE_LIMIT_MAX=100
 # RATE_LIMIT_WINDOW_MS=60000
+
+# External LaTeX compile service
+FORMATEX_API_KEY=your_formatex_api_key
+# Optional:
+# LATEX_API_BASE_URL=https://api.formatex.io
+# LATEX_ENGINE=pdflatex
 ```
 
 **Note:** For admin operations, it's recommended to use `SUPABASE_SERVICE_ROLE_KEY` which bypasses Row Level Security (RLS). For client-side operations, use `SUPABASE_ANON_KEY`.

@@ -13,6 +13,7 @@ export * from "./portfolios";
 export * from "./userSettings";
 export * from "./brainstorm";
 export * from "./takeNote";
+export * from "./latexDocuments";
 export * from "./userAdmin";
 export * from "./feedback";
 export * from "./shareTable";
