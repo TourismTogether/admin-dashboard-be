@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from "fastify";
-import { desc, eq } from "drizzle-orm";
-import { posts, userAdmin } from "../../db/schema";
+import { desc, eq, and } from "drizzle-orm";
+import { posts, userAdmin, postCategories } from "../../db/schema";
 import { verifyAccessToken, AuthenticatedRequest } from "../auth/auth";
 import {
   listPostsRouteSchema,
@@ -30,7 +30,12 @@ const postRoutes: FastifyPluginAsync = async (fastify) => {
         if (!fastify.drizzle) {
           return reply.status(500).send({ error: "Database not available" });
         }
-        const list = await fastify.drizzle.select().from(posts).orderBy(desc(posts.createdAt));
+
+        const list = await fastify.drizzle
+          .select()
+          .from(posts)
+          .orderBy(desc(posts.createdAt));
+
         return { data: list };
       } catch (error: any) {
         fastify.log.error({ err: error }, "Error listing posts");
@@ -49,26 +54,31 @@ const postRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       try {
-        if (!fastify.drizzle) {
-          return reply.status(500).send({ error: "Database not available" });
-        }
         const authRequest = request as AuthenticatedRequest;
         if (!authRequest.user) return reply.status(401).send({ error: "Unauthorized" });
 
         const body = request.body as {
-          categoryId: string,
-          title: string,
-          content: string,
+          categoryId: string;
+          title: string;
+          content: string;
         };
 
-        // TODO: check category
+        if (body.categoryId) {
+          const [category] = await fastify.drizzle
+            .select()
+            .from(postCategories)
+            .where(eq(postCategories.categoryId, body.categoryId))
+            .limit(1);
+
+          if (!category) return reply.status(400).send({ error: "Category not found" });
+        }
 
         const [created] = await fastify.drizzle
           .insert(posts)
           .values({
-            categoryId: body.categoryId ?? null,
+            categoryId: body.categoryId,
             title: body.title.trim(),
-            content: body.content ?? null,
+            content: body.content,
             authorId: authRequest.user.userId,
           })
           .returning();
@@ -91,33 +101,36 @@ const postRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       try {
-        if (!fastify.drizzle) {
-          return reply.status(500).send({ error: "Database not available" });
-        }
         const authRequest = request as AuthenticatedRequest;
         if (!authRequest.user) return reply.status(401).send({ error: "Unauthorized" });
 
-        // TODO: check author
-
         const { postId } = request.params as { postId: string };
         const body = request.body as {
-          categoryId?: string | undefined,
-          title?: string | undefined,
-          content?: string | undefined,
+          categoryId?: string;
+          title?: string;
+          content?: string;
         };
 
         const [updated] = await fastify.drizzle
           .update(posts)
           .set({
             ...(body.title !== undefined ? { title: body.title.trim() } : {}),
-            ...(body.content !== undefined ? { description: body.content } : {}),
-            ...(body.categoryId !== undefined ? { detail: body.categoryId } : {}),
+            ...(body.content !== undefined ? { content: body.content } : {}),
+            ...(body.categoryId !== undefined ? { categoryId: body.categoryId } : {}),
             updatedAt: new Date(),
           })
-          .where(eq(posts.postId, postId))
+          .where(
+            and(
+              eq(posts.postId, postId),
+              eq(posts.authorId, authRequest.user.userId)
+            )
+          )
           .returning();
 
-        if (!updated) return reply.status(404).send({ error: "Post not found" });
+        if (!updated) {
+          return reply.status(404).send({ error: "Post not found or you are not the author" });
+        }
+
         return { data: updated };
       } catch (error: any) {
         fastify.log.error({ err: error }, "Error updating post");
@@ -136,23 +149,24 @@ const postRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       try {
-        if (!fastify.drizzle) {
-          return reply.status(500).send({ error: "Database not available" });
-        }
         const authRequest = request as AuthenticatedRequest;
         if (!authRequest.user) return reply.status(401).send({ error: "Unauthorized" });
 
-        // TODO: admin or author
-        // const admin = await isAdmin(fastify.drizzle, authRequest.user.userId);
-        // if (!admin) return reply.status(403).send({ error: "Admin only" });
-
         const { postId } = request.params as { postId: string };
+        const admin = await isAdmin(fastify.drizzle, authRequest.user.userId);
+
+        const deleteCondition = admin
+          ? eq(posts.postId, postId)
+          : and(eq(posts.postId, postId), eq(posts.authorId, authRequest.user.userId));
+
         const [deleted] = await fastify.drizzle
           .delete(posts)
-          .where(eq(posts.postId, postId))
+          .where(deleteCondition)
           .returning({ postId: posts.postId });
-        if (!deleted) return reply.status(404).send({ error: "Post not found" });
-        return { message: "Post deleted" };
+
+        if (!deleted) return reply.status(404).send({ error: "Post not found or unauthorized" });
+
+        return { message: "Post deleted successfully" };
       } catch (error: any) {
         fastify.log.error({ err: error }, "Error deleting post");
         return reply.status(500).send({
