@@ -1,38 +1,31 @@
 import { FastifySchema } from "fastify";
-import { types } from "util";
 
-const postItem = {
+const postCategoryItem = {
   type: "object",
   properties: {
-    postId: { type: "string" },
-    authorId: { type: "string" },
     categoryId: { type: "string" },
-    title: { type: "string" },
-    content: { type: "string" },
+    name: { type: "string" },
     createdAt: { type: ["string", "null"], format: "date-time" },
     updatedAt: { type: ["string", "null"], format: "date-time" }
   },
 };
 
-
-const postBody = {
+const postCategoryBody = {
   type: "object",
-  required: ["categoryId", "title"],
+  required: ["name"],
   properties: {
-    categoryId: { type: "string" },
-    title: { type: "string" },
-    content: { type: "string" },
+    name: { type: "string" }
   },
 };
 
-export const listPostsRouteSchema: FastifySchema = {
+export const listPostCategoriesRouteSchema: FastifySchema = {
   response: {
     200: {
       type: "object",
       properties: {
         data: {
           type: "array",
-          items: postItem,
+          items: postCategoryItem,
         },
       },
     },
@@ -41,12 +34,12 @@ export const listPostsRouteSchema: FastifySchema = {
   },
 };
 
-export const createPostRouteSchema: FastifySchema = {
-  body: postBody,
+export const createPostCategoryRouteSchema: FastifySchema = {
+  body: postCategoryBody,
   response: {
     201: {
       type: "object",
-      properties: { data: postItem },
+      properties: { data: postCategoryItem },
     },
     401: { type: "object", properties: { error: { type: "string" } } },
     403: { type: "object", properties: { error: { type: "string" } } },
@@ -54,22 +47,19 @@ export const createPostRouteSchema: FastifySchema = {
   },
 };
 
-export const updatePostRouteSchema: FastifySchema = {
+export const updatePostCategoryRouteSchema: FastifySchema = {
   params: {
     type: "object",
-    required: ["postId"],
+    required: ["categoryId"],
     properties: {
-      postId: { type: "string" },
+      categoryId: { type: "string" },
     },
   },
-  body: {
-    type: "object",
-    properties: postBody.properties,
-  },
+  body: postCategoryBody,
   response: {
     200: {
       type: "object",
-      properties: { data: postItem },
+      properties: { data: postCategoryItem },
     },
     401: { type: "object", properties: { error: { type: "string" } } },
     403: { type: "object", properties: { error: { type: "string" } } },
@@ -78,12 +68,12 @@ export const updatePostRouteSchema: FastifySchema = {
   },
 };
 
-export const deletePostRouteSchema: FastifySchema = {
+export const deletePostCategoryRouteSchema: FastifySchema = {
   params: {
     type: "object",
-    required: ["eventId"],
+    required: ["categoryId"],
     properties: {
-      eventId: { type: "string" },
+      categoryId: { type: "string" },
     },
   },
   response: {
