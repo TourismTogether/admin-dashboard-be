@@ -68,9 +68,9 @@ ACCESS_TOKEN_EXPIRATION=7d
 # RATE_LIMIT_WINDOW_MS=60000
 
 # External LaTeX compile service
-TEXAPI_API_KEY=your_texapi_api_key
+FORMATEX_API_KEY=your_formatex_api_key
 # Optional:
-# LATEX_API_BASE_URL=https://texapi.ovh
+# LATEX_API_BASE_URL=https://api.formatex.io
 # LATEX_ENGINE=pdflatex
 ```
 

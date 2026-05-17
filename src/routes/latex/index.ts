@@ -12,40 +12,34 @@ import {
 } from "./schemas";
 
 const LATEX_API_BASE_URL =
-  process.env.LATEX_API_BASE_URL || "https://texapi.ovh";
-const LATEX_API_KEY = process.env.TEXAPI_API_KEY;
+  process.env.LATEX_API_BASE_URL || "https://api.formatex.io";
+const LATEX_API_KEY = process.env.FORMATEX_API_KEY;
 const LATEX_ENGINE = process.env.LATEX_ENGINE || "pdflatex";
-
-type TexapiCompileResponse = {
-  status: "success" | "error";
-  errors?: string[];
-  resultPath?: string | null;
-  outputFiles?: Array<{ type?: string; content?: string }> | null;
-};
 
 async function compileLatex(content: string) {
   if (!LATEX_API_KEY) {
-    throw new Error("Missing TEXAPI_API_KEY environment variable");
+    throw new Error("Missing FORMATEX_API_KEY environment variable");
   }
 
   const compileRes = await fetch(
-    `${LATEX_API_BASE_URL}/api/latex/compile?compiler=${encodeURIComponent(
-      LATEX_ENGINE,
-    )}`,
+    `${LATEX_API_BASE_URL}/api/v1/compile`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-API-KEY": LATEX_API_KEY,
+        "X-API-Key": LATEX_API_KEY,
       },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({
+        latex: content,
+        engine: LATEX_ENGINE,
+      }),
     },
   );
 
   if (!compileRes.ok) {
     const responseText = await compileRes.text();
     if (compileRes.status === 401) {
-      throw new Error("Texapi rejected TEXAPI_API_KEY");
+      throw new Error("FormaTeX rejected FORMATEX_API_KEY");
     }
     throw new Error(
       [
@@ -57,33 +51,10 @@ async function compileLatex(content: string) {
     );
   }
 
-  const payload = (await compileRes.json()) as TexapiCompileResponse;
-  const log = [
-    ...(payload.errors ?? []),
-    ...((payload.outputFiles ?? [])
-      .filter((file) => file.type?.includes("log"))
-      .map((file) => file.content ?? "")
-      .filter(Boolean)),
-  ].join("\n");
-
-  if (payload.status !== "success" || !payload.resultPath) {
-    throw new Error(log || "LaTeX compilation failed");
-  }
-
-  const pdfRes = await fetch(`${LATEX_API_BASE_URL}${payload.resultPath}`, {
-    headers: {
-      "X-API-KEY": LATEX_API_KEY,
-    },
-  });
-
-  if (!pdfRes.ok) {
-    throw new Error(`Failed to download PDF with status ${pdfRes.status}`);
-  }
-
-  const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+  const pdfBuffer = Buffer.from(await compileRes.arrayBuffer());
   return {
     pdfBase64: pdfBuffer.toString("base64"),
-    log,
+    log: "",
     engine: LATEX_ENGINE,
   };
 }
