@@ -19,3 +19,4 @@ export * from "./feedback";
 export * from "./shareTable";
 export * from "./meetings";
 export * from "./events";
+export * from "./research";

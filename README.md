@@ -72,6 +72,17 @@ FORMATEX_API_KEY=your_formatex_api_key
 # Optional:
 # LATEX_API_BASE_URL=https://api.formatex.io
 # LATEX_ENGINE=pdflatex
+
+# Research feature
+SERPER_API_KEY=your_serper_api_key
+GEMINI_API_KEY=your_gemini_api_key
+# Optional:
+# GEMINI_MODEL=gemini-2.5-flash
+# GEMINI_API_BASE_URL=https://generativelanguage.googleapis.com/v1beta
+# Or use OpenAI instead of Gemini:
+# OPENAI_API_KEY=your_openai_api_key
+# OPENAI_MODEL=gpt-4o-mini
+# OPENAI_API_BASE_URL=https://api.openai.com/v1
 ```
 
 **Note:** For admin operations, it's recommended to use `SUPABASE_SERVICE_ROLE_KEY` which bypasses Row Level Security (RLS). For client-side operations, use `SUPABASE_ANON_KEY`.
