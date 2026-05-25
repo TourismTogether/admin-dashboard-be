@@ -257,6 +257,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
   const feedbackRoutes = await import("./routes/feedback/index");
   const eventRoutes = await import("./routes/events/index");
   const shareRoutes = await import("./routes/share/index");
+  const researchRoutes = await import("./routes/research/index");
 
   await fastify.register(authRoutes.default);
   await fastify.register(personalTasksRoutes.default);
@@ -270,6 +271,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
   await fastify.register(feedbackRoutes.default);
   await fastify.register(eventRoutes.default);
   await fastify.register(shareRoutes.default);
+  await fastify.register(researchRoutes.default);
 };
 
 export default app;
