@@ -54,6 +54,9 @@ const postRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
         const authRequest = request as AuthenticatedRequest;
         if (!authRequest.user) return reply.status(401).send({ error: "Unauthorized" });
 
@@ -101,6 +104,9 @@ const postRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
         const authRequest = request as AuthenticatedRequest;
         if (!authRequest.user) return reply.status(401).send({ error: "Unauthorized" });
 
@@ -110,6 +116,16 @@ const postRoutes: FastifyPluginAsync = async (fastify) => {
           title?: string;
           content?: string;
         };
+
+        if (body.categoryId !== undefined) {
+          const [category] = await fastify.drizzle
+            .select()
+            .from(postCategories)
+            .where(eq(postCategories.categoryId, body.categoryId))
+            .limit(1);
+
+          if (!category) return reply.status(400).send({ error: "Category not found" });
+        }
 
         const [updated] = await fastify.drizzle
           .update(posts)
@@ -149,6 +165,9 @@ const postRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
         const authRequest = request as AuthenticatedRequest;
         if (!authRequest.user) return reply.status(401).send({ error: "Unauthorized" });
 

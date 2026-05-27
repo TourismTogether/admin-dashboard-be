@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from "fastify";
 import { desc, eq } from "drizzle-orm";
-import { postCategories, userAdmin } from "../../db/schema";
+import { postCategories, posts, userAdmin } from "../../db/schema";
 import { verifyAccessToken, AuthenticatedRequest } from "../auth/auth";
 import {
   listPostCategoriesRouteSchema,
@@ -53,6 +53,9 @@ const postCategoryRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
         const authRequest = request as AuthenticatedRequest;
         if (!authRequest.user) return reply.status(401).send({ error: "Unauthorized" });
 
@@ -87,6 +90,9 @@ const postCategoryRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
         const authRequest = request as AuthenticatedRequest;
         if (!authRequest.user) return reply.status(401).send({ error: "Unauthorized" });
 
@@ -124,6 +130,9 @@ const postCategoryRoutes: FastifyPluginAsync = async (fastify) => {
     },
     async (request, reply) => {
       try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
         const authRequest = request as AuthenticatedRequest;
         if (!authRequest.user) return reply.status(401).send({ error: "Unauthorized" });
 
@@ -131,6 +140,17 @@ const postCategoryRoutes: FastifyPluginAsync = async (fastify) => {
         if (!admin) return reply.status(403).send({ error: "Admin only" });
 
         const { categoryId } = request.params as { categoryId: string };
+
+        const [usedPost] = await fastify.drizzle
+          .select({ postId: posts.postId })
+          .from(posts)
+          .where(eq(posts.categoryId, categoryId))
+          .limit(1);
+
+        if (usedPost) {
+          return reply.status(409).send({ error: "Category is used by existing posts" });
+        }
+
         const [deleted] = await fastify.drizzle
           .delete(postCategories)
           .where(eq(postCategories.categoryId, categoryId))

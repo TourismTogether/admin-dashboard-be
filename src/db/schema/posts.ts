@@ -9,7 +9,7 @@ export const posts = pgTable("posts", {
     .references(() => users.userId, { onDelete: "cascade" }),
   categoryId: uuid("category_id")
     .notNull()
-    .references(() => postCategories.categoryId, { onDelete: "cascade" }),
+    .references(() => postCategories.categoryId),
   title: varchar("title", { length: 255 }).notNull(),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

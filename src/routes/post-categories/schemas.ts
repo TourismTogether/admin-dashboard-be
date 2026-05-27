@@ -64,6 +64,7 @@ export const updatePostCategoryRouteSchema: FastifySchema = {
     401: { type: "object", properties: { error: { type: "string" } } },
     403: { type: "object", properties: { error: { type: "string" } } },
     404: { type: "object", properties: { error: { type: "string" } } },
+    409: { type: "object", properties: { error: { type: "string" } } },
     500: { type: "object", properties: { error: { type: "string" } } },
   },
 };
