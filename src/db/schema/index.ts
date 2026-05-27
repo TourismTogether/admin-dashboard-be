@@ -20,3 +20,5 @@ export * from "./shareTable";
 export * from "./meetings";
 export * from "./events";
 export * from "./research";
+export * from "./posts";
+export * from "./postCategories";
