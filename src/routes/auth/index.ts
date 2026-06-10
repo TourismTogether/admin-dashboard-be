@@ -4,6 +4,8 @@ import { eq } from "drizzle-orm";
 import { users, userAdmin } from "../../db/schema";
 import {
   generateAccessToken,
+  generateRefreshToken,
+  verifyRefreshToken,
   verifyAccessToken,
   AuthenticationError,
   AuthenticatedRequest,
@@ -12,10 +14,59 @@ import {
   registerRouteSchema,
   loginRouteSchema,
   meRouteSchema,
+  refreshRouteSchema,
+  logoutRouteSchema,
 } from "./schemas";
 
 const saltRounds = 10;
 const MIN_PASSWORD_LENGTH = 8;
+const REFRESH_TOKEN_COOKIE = "refresh_token";
+
+function getCookie(request: { headers: { cookie?: string } }, name: string) {
+  const cookies = request.headers.cookie?.split(";") || [];
+  for (const cookie of cookies) {
+    const [cookieName, ...valueParts] = cookie.trim().split("=");
+    if (cookieName === name) {
+      return decodeURIComponent(valueParts.join("="));
+    }
+  }
+  return undefined;
+}
+
+function buildRefreshCookie(token: string, maxAge: number) {
+  const isProduction = process.env.NODE_ENV === "production";
+  return [
+    `${REFRESH_TOKEN_COOKIE}=${encodeURIComponent(token)}`,
+    "HttpOnly",
+    "Path=/api/auth",
+    `Max-Age=${maxAge}`,
+    isProduction ? "SameSite=None" : "SameSite=Lax",
+    ...(isProduction ? ["Secure"] : []),
+  ].join("; ");
+}
+
+function getRefreshCookie(token: string) {
+  const configuredMaxAge = Number.parseInt(
+    process.env.REFRESH_TOKEN_COOKIE_MAX_AGE_SECONDS || "2592000",
+    10
+  );
+  const maxAge = Number.isFinite(configuredMaxAge)
+    ? configuredMaxAge
+    : 2592000;
+  return buildRefreshCookie(token, maxAge);
+}
+
+function getClearedRefreshCookie() {
+  return buildRefreshCookie("", 0);
+}
+
+async function issueTokens(userId: string, email: string) {
+  const [accessToken, refreshToken] = await Promise.all([
+    generateAccessToken(userId, email),
+    generateRefreshToken(userId, email),
+  ]);
+  return { accessToken, refreshToken };
+}
 
 const validatePassword = (password: string) => {
   const hasMinLength = password.length >= MIN_PASSWORD_LENGTH;
@@ -112,21 +163,26 @@ const auth: FastifyPluginAsync = async (fastify) => {
           })
           .returning();
 
-        // Generate access token
-        const accessToken = await generateAccessToken(newUser.userId, newUser.email);
+        const { accessToken, refreshToken } = await issueTokens(
+          newUser.userId,
+          newUser.email
+        );
         const isAdmin = await checkIsAdmin(fastify.drizzle!, newUser.userId);
 
-        return reply.status(201).send({
-          access_token: accessToken,
-          user: {
-            userId: newUser.userId,
-            email: newUser.email,
-            account: newUser.account,
-            nickname: newUser.nickname,
-            fullname: newUser.fullname,
-            isAdmin,
-          },
-        });
+        return reply
+          .header("Set-Cookie", getRefreshCookie(refreshToken))
+          .status(201)
+          .send({
+            access_token: accessToken,
+            user: {
+              userId: newUser.userId,
+              email: newUser.email,
+              account: newUser.account,
+              nickname: newUser.nickname,
+              fullname: newUser.fullname,
+              isAdmin,
+            },
+          });
       } catch (error: any) {
         fastify.log.error({ err: error }, "Error registering user");
         return reply.status(500).send({
@@ -168,27 +224,99 @@ const auth: FastifyPluginAsync = async (fastify) => {
           return reply.status(401).send({ error: "Invalid email or password" });
         }
 
-        // Generate access token
-        const accessToken = await generateAccessToken(user.userId, user.email);
+        const { accessToken, refreshToken } = await issueTokens(
+          user.userId,
+          user.email
+        );
         const isAdmin = await checkIsAdmin(fastify.drizzle!, user.userId);
 
-        return reply.send({
-          access_token: accessToken,
-          user: {
-            userId: user.userId,
-            email: user.email,
-            account: user.account,
-            nickname: user.nickname,
-            fullname: user.fullname,
-            isAdmin,
-          },
-        });
+        return reply
+          .header("Set-Cookie", getRefreshCookie(refreshToken))
+          .send({
+            access_token: accessToken,
+            user: {
+              userId: user.userId,
+              email: user.email,
+              account: user.account,
+              nickname: user.nickname,
+              fullname: user.fullname,
+              isAdmin,
+            },
+          });
       } catch (error: any) {
         fastify.log.error({ err: error }, "Error logging in");
         return reply.status(500).send({
           error: process.env.NODE_ENV === "production" ? "Internal server error" : (error.message || "Internal server error"),
         });
       }
+    }
+  );
+
+  fastify.post(
+    "/api/auth/refresh",
+    { schema: refreshRouteSchema },
+    async (request, reply) => {
+      try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
+
+        const refreshToken = getCookie(request, REFRESH_TOKEN_COOKIE);
+        if (!refreshToken) {
+          return reply.status(401).send({
+            error: "Refresh token not found",
+            code: "auth_no_refresh_token",
+          });
+        }
+
+        const tokenUser = await verifyRefreshToken(refreshToken);
+        const [user] = await fastify.drizzle
+          .select({
+            userId: users.userId,
+            email: users.email,
+          })
+          .from(users)
+          .where(eq(users.userId, tokenUser.userId))
+          .limit(1);
+
+        if (!user) {
+          return reply
+            .header("Set-Cookie", getClearedRefreshCookie())
+            .status(401)
+            .send({
+              error: "User not found",
+              code: "auth_user_not_found",
+            });
+        }
+
+        const tokens = await issueTokens(user.userId, user.email);
+        return reply
+          .header("Set-Cookie", getRefreshCookie(tokens.refreshToken))
+          .send({ access_token: tokens.accessToken });
+      } catch (error) {
+        if (error instanceof AuthenticationError) {
+          return reply
+            .header("Set-Cookie", getClearedRefreshCookie())
+            .status(error.statusCode)
+            .send({
+              error: error.message,
+              code: error.code,
+            });
+        }
+        fastify.log.error({ err: error }, "Error refreshing token");
+        return reply.status(500).send({ error: "Internal server error" });
+      }
+    }
+  );
+
+  fastify.post(
+    "/api/auth/logout",
+    { schema: logoutRouteSchema },
+    async (_request, reply) => {
+      return reply
+        .header("Set-Cookie", getClearedRefreshCookie())
+        .status(204)
+        .send();
     }
   );
 

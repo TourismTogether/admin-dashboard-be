@@ -134,3 +134,36 @@ export const meRouteSchema: FastifySchema = {
     },
   },
 };
+
+export const refreshRouteSchema: FastifySchema = {
+  response: {
+    200: {
+      type: "object",
+      required: ["access_token"],
+      properties: {
+        access_token: { type: "string" },
+      },
+    },
+    401: {
+      type: "object",
+      properties: {
+        error: { type: "string" },
+        code: { type: "string" },
+      },
+    },
+    500: {
+      type: "object",
+      properties: {
+        error: { type: "string" },
+      },
+    },
+  },
+};
+
+export const logoutRouteSchema: FastifySchema = {
+  response: {
+    204: {
+      type: "null",
+    },
+  },
+};

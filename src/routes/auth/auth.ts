@@ -7,14 +7,29 @@ import { users } from "../../db/schema";
 export const accessTokenSecret: KeyObject = createSecretKey(
   Buffer.from(process.env.ACCESS_TOKEN_SECRET || "your-secret-key-change-in-production", "utf-8")
 );
+const refreshTokenSecret: KeyObject = createSecretKey(
+  Buffer.from(
+    process.env.REFRESH_TOKEN_SECRET ||
+      process.env.ACCESS_TOKEN_SECRET ||
+      "your-refresh-secret-key-change-in-production",
+    "utf-8"
+  )
+);
 
 if (!process.env.ACCESS_TOKEN_SECRET) {
   console.warn("⚠️  ACCESS_TOKEN_SECRET is not set. Using default secret (NOT SECURE FOR PRODUCTION)");
 }
 
+if (!process.env.REFRESH_TOKEN_SECRET) {
+  console.warn(
+    "⚠️  REFRESH_TOKEN_SECRET is not set. Falling back to ACCESS_TOKEN_SECRET"
+  );
+}
+
 export interface JwtPayload extends JWTPayload {
   userId: string;
   email: string;
+  tokenType: "access" | "refresh";
   iat?: number;
   exp?: number;
   [key: string]: unknown; // Index signature to match JWTPayload requirements
@@ -66,7 +81,7 @@ export async function verifyAccessToken(
     const userId = jwtPayload.userId;
     const email = jwtPayload.email;
 
-    if (!userId || !email) {
+    if (jwtPayload.tokenType !== "access" || !userId || !email) {
       throw new AuthenticationError(
         401,
         "Invalid token payload",
@@ -145,6 +160,7 @@ export async function generateAccessToken(
   const payload: JwtPayload = {
     userId,
     email,
+    tokenType: "access",
   };
   
   return await new SignJWT(payload as JWTPayload)
@@ -152,4 +168,65 @@ export async function generateAccessToken(
     .setIssuedAt()
     .setExpirationTime(expirationTime)
     .sign(accessTokenSecret);
+}
+
+export async function generateRefreshToken(
+  userId: string,
+  email: string
+): Promise<string> {
+  const expirationTime = process.env.REFRESH_TOKEN_EXPIRATION || "30d";
+  const payload: JwtPayload = {
+    userId,
+    email,
+    tokenType: "refresh",
+  };
+
+  return await new SignJWT(payload as JWTPayload)
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(expirationTime)
+    .sign(refreshTokenSecret);
+}
+
+export async function verifyRefreshToken(token: string): Promise<User> {
+  try {
+    const { payload } = await jwtVerify(token, refreshTokenSecret);
+    const jwtPayload = payload as JwtPayload;
+
+    if (
+      jwtPayload.tokenType !== "refresh" ||
+      !jwtPayload.userId ||
+      !jwtPayload.email
+    ) {
+      throw new AuthenticationError(
+        401,
+        "Invalid refresh token",
+        "JWT",
+        "auth_refresh_token_invalid"
+      );
+    }
+
+    return {
+      userId: jwtPayload.userId,
+      email: jwtPayload.email,
+    };
+  } catch (error) {
+    if (error instanceof errors.JWTExpired) {
+      throw new AuthenticationError(
+        401,
+        "Refresh token expired",
+        "JWT",
+        "auth_refresh_token_expired"
+      );
+    }
+    if (error instanceof AuthenticationError) {
+      throw error;
+    }
+    throw new AuthenticationError(
+      401,
+      "Invalid refresh token",
+      "JWT",
+      "auth_refresh_token_invalid"
+    );
+  }
 }
