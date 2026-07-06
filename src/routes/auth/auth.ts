@@ -30,6 +30,7 @@ export interface JwtPayload extends JWTPayload {
   userId: string;
   email: string;
   tokenType: "access" | "refresh";
+  tokenId?: string;
   iat?: number;
   exp?: number;
   [key: string]: unknown; // Index signature to match JWTPayload requirements
@@ -38,6 +39,7 @@ export interface JwtPayload extends JWTPayload {
 export interface User {
   userId: string;
   email: string;
+  tokenId?: string;
 }
 
 export interface AuthenticatedRequest<
@@ -155,7 +157,7 @@ export async function generateAccessToken(
   userId: string,
   email: string
 ): Promise<string> {
-  const expirationTime = process.env.ACCESS_TOKEN_EXPIRATION || "7d";
+  const expirationTime = process.env.ACCESS_TOKEN_EXPIRATION || "15m";
   
   const payload: JwtPayload = {
     userId,
@@ -172,12 +174,14 @@ export async function generateAccessToken(
 
 export async function generateRefreshToken(
   userId: string,
-  email: string
+  email: string,
+  tokenId: string
 ): Promise<string> {
   const expirationTime = process.env.REFRESH_TOKEN_EXPIRATION || "30d";
   const payload: JwtPayload = {
     userId,
     email,
+    tokenId,
     tokenType: "refresh",
   };
 
@@ -196,7 +200,8 @@ export async function verifyRefreshToken(token: string): Promise<User> {
     if (
       jwtPayload.tokenType !== "refresh" ||
       !jwtPayload.userId ||
-      !jwtPayload.email
+      !jwtPayload.email ||
+      !jwtPayload.tokenId
     ) {
       throw new AuthenticationError(
         401,
@@ -209,6 +214,7 @@ export async function verifyRefreshToken(token: string): Promise<User> {
     return {
       userId: jwtPayload.userId,
       email: jwtPayload.email,
+      tokenId: jwtPayload.tokenId,
     };
   } catch (error) {
     if (error instanceof errors.JWTExpired) {
