@@ -1,7 +1,7 @@
 import { FastifyPluginAsync } from "fastify";
 import { eq, and, inArray, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { tableWeeks, tableSwimlanes, personalTasks, shareTable } from "../../db/schema";
+import { tableWeeks, tableSwimlanes, personalTasks, shareTable, personalLearningNotes } from "../../db/schema";
 import { verifyAccessToken, AuthenticatedRequest } from "../auth/auth";
 import {
   getTablesRouteSchema,
@@ -16,6 +16,10 @@ import {
   updateTaskRouteSchema,
   deleteTaskRouteSchema,
   getRecentTasksRouteSchema,
+  getLearningNotesRouteSchema,
+  getLearningNoteRouteSchema,
+  upsertLearningNoteRouteSchema,
+  deleteLearningNoteRouteSchema,
 } from "./schemas";
 // Email feature temporarily disabled (incomplete / has bugs)
 // import { sendWeeklyEmailForUser } from "../../jobs/weeklyPersonalTasksEmail";
@@ -25,6 +29,158 @@ function isValidTaskUuid(id: string): boolean {
 }
 
 const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
+  fastify.get(
+    "/api/personal-tasks/learning-notes",
+    {
+      schema: getLearningNotesRouteSchema,
+      preHandler: [verifyAccessToken],
+    },
+    async (request, reply) => {
+      try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
+
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) {
+          return reply.status(401).send({ error: "Unauthorized" });
+        }
+        const userId = authRequest.user.userId;
+        const { limit } = request.query as { limit?: number };
+
+        const notes = await fastify.drizzle
+          .select()
+          .from(personalLearningNotes)
+          .where(eq(personalLearningNotes.userId, userId))
+          .orderBy(desc(personalLearningNotes.noteDate))
+          .limit(limit ?? 7);
+
+        return { data: notes };
+      } catch (error: any) {
+        fastify.log.error({ err: error }, "Error fetching learning notes");
+        return reply.status(500).send({ error: error.message });
+      }
+    }
+  );
+
+  fastify.get(
+    "/api/personal-tasks/learning-notes/:noteDate",
+    {
+      schema: getLearningNoteRouteSchema,
+      preHandler: [verifyAccessToken],
+    },
+    async (request, reply) => {
+      try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
+
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) {
+          return reply.status(401).send({ error: "Unauthorized" });
+        }
+        const userId = authRequest.user.userId;
+        const { noteDate } = request.params as { noteDate: string };
+
+        const [note] = await fastify.drizzle
+          .select()
+          .from(personalLearningNotes)
+          .where(and(eq(personalLearningNotes.userId, userId), eq(personalLearningNotes.noteDate, noteDate)))
+          .limit(1);
+
+        return { data: note ?? null };
+      } catch (error: any) {
+        fastify.log.error({ err: error }, "Error fetching learning note");
+        return reply.status(500).send({ error: error.message });
+      }
+    }
+  );
+
+  fastify.put(
+    "/api/personal-tasks/learning-notes/:noteDate",
+    {
+      schema: upsertLearningNoteRouteSchema,
+      preHandler: [verifyAccessToken],
+    },
+    async (request, reply) => {
+      try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
+
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) {
+          return reply.status(401).send({ error: "Unauthorized" });
+        }
+        const userId = authRequest.user.userId;
+        const { noteDate } = request.params as { noteDate: string };
+        const body = request.body as { content: string };
+
+        const [note] = await fastify.drizzle
+          .insert(personalLearningNotes)
+          .values({
+            userId,
+            noteDate,
+            content: body.content,
+          })
+          .onConflictDoUpdate({
+            target: [personalLearningNotes.userId, personalLearningNotes.noteDate],
+            set: {
+              content: body.content,
+              updatedAt: new Date(),
+            },
+          })
+          .returning();
+
+        return { data: note };
+      } catch (error: any) {
+        fastify.log.error({ err: error }, "Error saving learning note");
+        return reply.status(500).send({ error: error.message });
+      }
+    }
+  );
+
+  fastify.delete(
+    "/api/personal-tasks/learning-notes/:noteDate",
+    {
+      schema: deleteLearningNoteRouteSchema,
+      preHandler: [verifyAccessToken],
+    },
+    async (request, reply) => {
+      try {
+        if (!fastify.drizzle) {
+          return reply.status(500).send({ error: "Database not available" });
+        }
+
+        const authRequest = request as AuthenticatedRequest;
+        if (!authRequest.user) {
+          return reply.status(401).send({ error: "Unauthorized" });
+        }
+        const userId = authRequest.user.userId;
+        const { noteDate } = request.params as { noteDate: string };
+
+        const [existing] = await fastify.drizzle
+          .select()
+          .from(personalLearningNotes)
+          .where(and(eq(personalLearningNotes.userId, userId), eq(personalLearningNotes.noteDate, noteDate)))
+          .limit(1);
+
+        if (!existing) {
+          return reply.status(404).send({ error: "Learning note not found" });
+        }
+
+        await fastify.drizzle
+          .delete(personalLearningNotes)
+          .where(and(eq(personalLearningNotes.userId, userId), eq(personalLearningNotes.noteDate, noteDate)));
+
+        return { message: "Learning note deleted successfully" };
+      } catch (error: any) {
+        fastify.log.error({ err: error }, "Error deleting learning note");
+        return reply.status(500).send({ error: error.message });
+      }
+    }
+  );
+
   // Get all tables for a user
   fastify.get(
     "/api/personal-tasks/tables",

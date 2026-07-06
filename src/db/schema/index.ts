@@ -9,6 +9,7 @@ export * from "./userGroupTasks";
 export * from "./tableWeeks";
 export * from "./tableSwimlanes";
 export * from "./personalTasks";
+export * from "./personalLearningNotes";
 export * from "./portfolios";
 export * from "./userSettings";
 export * from "./brainstorm";

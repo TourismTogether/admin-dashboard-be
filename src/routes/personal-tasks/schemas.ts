@@ -577,3 +577,152 @@ export const getRecentTasksRouteSchema: FastifySchema = {
     },
   },
 };
+
+const learningNoteResponse = {
+  type: "object",
+  properties: {
+    noteId: { type: "string" },
+    userId: { type: "string" },
+    noteDate: { type: "string", format: "date" },
+    content: { type: "string" },
+    createdAt: { type: "string", format: "date-time" },
+    updatedAt: { type: "string", format: "date-time" },
+  },
+};
+
+export const getLearningNotesRouteSchema: FastifySchema = {
+  querystring: {
+    type: "object",
+    properties: {
+      limit: { type: "number", minimum: 1, maximum: 30 },
+    },
+  },
+  response: {
+    200: {
+      type: "object",
+      properties: {
+        data: {
+          type: "array",
+          items: learningNoteResponse,
+        },
+      },
+    },
+    401: {
+      type: "object",
+      properties: {
+        error: { type: "string" },
+      },
+    },
+    500: {
+      type: "object",
+      properties: {
+        error: { type: "string" },
+      },
+    },
+  },
+};
+
+export const getLearningNoteRouteSchema: FastifySchema = {
+  params: {
+    type: "object",
+    required: ["noteDate"],
+    properties: {
+      noteDate: { type: "string", format: "date" },
+    },
+  },
+  response: {
+    200: {
+      type: "object",
+      properties: {
+        data: {
+          anyOf: [learningNoteResponse, { type: "null" }],
+        },
+      },
+    },
+    401: {
+      type: "object",
+      properties: {
+        error: { type: "string" },
+      },
+    },
+    500: {
+      type: "object",
+      properties: {
+        error: { type: "string" },
+      },
+    },
+  },
+};
+
+export const upsertLearningNoteRouteSchema: FastifySchema = {
+  params: {
+    type: "object",
+    required: ["noteDate"],
+    properties: {
+      noteDate: { type: "string", format: "date" },
+    },
+  },
+  body: {
+    type: "object",
+    required: ["content"],
+    properties: {
+      content: { type: "string" },
+    },
+  },
+  response: {
+    200: {
+      type: "object",
+      properties: {
+        data: learningNoteResponse,
+      },
+    },
+    401: {
+      type: "object",
+      properties: {
+        error: { type: "string" },
+      },
+    },
+    500: {
+      type: "object",
+      properties: {
+        error: { type: "string" },
+      },
+    },
+  },
+};
+
+export const deleteLearningNoteRouteSchema: FastifySchema = {
+  params: {
+    type: "object",
+    required: ["noteDate"],
+    properties: {
+      noteDate: { type: "string", format: "date" },
+    },
+  },
+  response: {
+    200: {
+      type: "object",
+      properties: {
+        message: { type: "string" },
+      },
+    },
+    401: {
+      type: "object",
+      properties: {
+        error: { type: "string" },
+      },
+    },
+    404: {
+      type: "object",
+      properties: {
+        error: { type: "string" },
+      },
+    },
+    500: {
+      type: "object",
+      properties: {
+        error: { type: "string" },
+      },
+    },
+  },
+};
