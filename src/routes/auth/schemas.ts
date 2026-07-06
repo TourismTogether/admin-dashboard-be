@@ -134,3 +134,50 @@ export const meRouteSchema: FastifySchema = {
     },
   },
 };
+
+export const refreshRouteSchema: FastifySchema = {
+  response: {
+    200: {
+      type: "object",
+      required: ["access_token", "user"],
+      properties: {
+        access_token: { type: "string" },
+        user: {
+          type: "object",
+          properties: {
+            userId: { type: "string" },
+            email: { type: "string" },
+            account: { type: "string" },
+            nickname: { type: "string" },
+            fullname: { type: "string" },
+            imageUrl: { type: "string", nullable: true },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+            isAdmin: { type: "boolean" },
+          },
+        },
+      },
+    },
+    401: {
+      type: "object",
+      properties: {
+        error: { type: "string" },
+        code: { type: "string" },
+      },
+    },
+    500: {
+      type: "object",
+      properties: {
+        error: { type: "string" },
+      },
+    },
+  },
+};
+
+export const logoutRouteSchema: FastifySchema = {
+  response: {
+    204: {
+      type: "null",
+    },
+  },
+};

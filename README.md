@@ -57,7 +57,10 @@ SMTP_FROM=your-email@gmail.com
 
 # Auth (required in production)
 ACCESS_TOKEN_SECRET=your-long-random-secret-at-least-32-chars
-ACCESS_TOKEN_EXPIRATION=7d
+ACCESS_TOKEN_EXPIRATION=15m
+REFRESH_TOKEN_SECRET=another-long-random-secret-at-least-32-chars
+REFRESH_TOKEN_EXPIRATION=30d
+REFRESH_TOKEN_COOKIE_MAX_AGE_SECONDS=2592000
 
 # Production: allow frontend origin(s), comma-separated
 # Example (Vercel frontend):
