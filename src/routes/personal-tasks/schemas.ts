@@ -585,6 +585,7 @@ const learningNoteResponse = {
     userId: { type: "string" },
     noteDate: { type: "string", format: "date" },
     content: { type: "string" },
+    dailyScore: { type: ["integer", "null"], minimum: 1, maximum: 10, nullable: true },
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" },
   },
@@ -667,6 +668,7 @@ export const upsertLearningNoteRouteSchema: FastifySchema = {
     required: ["content"],
     properties: {
       content: { type: "string" },
+      dailyScore: { type: ["integer", "null"], minimum: 1, maximum: 10, nullable: true },
     },
   },
   response: {

@@ -114,21 +114,34 @@ const personalTasksRoutes: FastifyPluginAsync = async (fastify) => {
         }
         const userId = authRequest.user.userId;
         const { noteDate } = request.params as { noteDate: string };
-        const body = request.body as { content: string };
+        const body = request.body as { content: string; dailyScore?: number | null };
+
+        const insertValues = {
+          userId,
+          noteDate,
+          content: body.content,
+          ...(body.dailyScore !== undefined ? { dailyScore: body.dailyScore } : {}),
+        };
+
+        const updateSet: {
+          content: string;
+          updatedAt: Date;
+          dailyScore?: number | null;
+        } = {
+          content: body.content,
+          updatedAt: new Date(),
+        };
+
+        if (body.dailyScore !== undefined) {
+          updateSet.dailyScore = body.dailyScore;
+        }
 
         const [note] = await fastify.drizzle
           .insert(personalLearningNotes)
-          .values({
-            userId,
-            noteDate,
-            content: body.content,
-          })
+          .values(insertValues)
           .onConflictDoUpdate({
             target: [personalLearningNotes.userId, personalLearningNotes.noteDate],
-            set: {
-              content: body.content,
-              updatedAt: new Date(),
-            },
+            set: updateSet,
           })
           .returning();
 

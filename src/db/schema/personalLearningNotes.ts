@@ -1,4 +1,4 @@
-import { date, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { date, integer, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { users } from "./users";
 
 export const personalLearningNotes = pgTable(
@@ -10,6 +10,7 @@ export const personalLearningNotes = pgTable(
       .references(() => users.userId, { onDelete: "cascade" }),
     noteDate: date("note_date").notNull(),
     content: text("content").notNull().default(""),
+    dailyScore: integer("daily_score"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
